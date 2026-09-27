@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Лабораторная работа 4 — МНК</title>
+<style>
+  :root {
+    --bg: #f7f7fa; --card: #ffffff; --text: #1c1c22; --muted: #6b6b76;
+    --accent: #4f6df5; --accent2: #f5a04f; --accent3: #33ad7a; --border: #e4e4ea;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #14141a; --card: #1e1e26; --text: #eaeaf0; --muted: #9a9aa6; --border: #2c2c36; }
+  }
+  :root[data-theme="dark"] { --bg: #14141a; --card: #1e1e26; --text: #eaeaf0; --muted: #9a9aa6; --border: #2c2c36; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.6; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 32px 20px 60px; }
+  h1 { font-size: 1.6rem; margin-bottom: 4px; }
+  .sub { color: var(--muted); margin-top: 0; margin-bottom: 24px; font-size: 0.95rem; }
+  .toc { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+  .toc a { font-size: 0.85rem; text-decoration: none; color: var(--accent); background: rgba(79,109,245,0.1); padding: 6px 12px; border-radius: 20px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px; margin-bottom: 20px; }
+  h2 { font-size: 1.12rem; margin-top: 0; }
+  code, pre { background: rgba(127,127,127,0.12); border-radius: 6px; font-size: 0.85em; }
+  code { padding: 2px 6px; }
+  pre { padding: 12px 14px; overflow-x: auto; max-width: 100%; }
+  .formula { font-size: 1.0rem; background: rgba(127,127,127,0.08); border-radius: 10px; padding: 10px 16px; margin: 10px 0; text-align: center; }
+  .step { border-left: 3px solid var(--border); padding: 4px 0 4px 14px; margin: 10px 0; }
+  .step b { color: var(--accent); }
+  .controls { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+  .controls label { background: rgba(127,127,127,0.1); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; font-size: 0.88rem; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .seg button { border: none; border-radius: 0; background: var(--card); color: var(--text); padding: 6px 12px; font-size: 0.88rem; cursor: pointer; }
+  .seg button.active { background: var(--accent); color: white; }
+  .chart-box { position: relative; height: 380px; margin-top: 6px; }
+  .readout { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; font-size: 0.88rem; }
+  .readout div { padding: 6px 12px; border-radius: 8px; background: rgba(127,127,127,0.08); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Лабораторная работа 4 — метод наименьших квадратов</h1>
+  <p class="sub">Ипатенков Г.А. · ИВТ-4 · вариант 6 — тестовые точки параболы y = x² + 2x + 1</p>
+
+  <div class="toc">
+    <a href="#idea">Идея метода</a>
+    <a href="#horner">Схема Горнера</a>
+    <a href="#viz">Визуализация</a>
+  </div>
+
+  <div class="card" id="idea">
+    <h2>Идея МНК</h2>
+    <p>По точкам (xₖ, yₖ) нужно подобрать полином P(x) = C₀ + C₁x + C₂x² + … так, чтобы сумма квадратов отклонений была минимальна:</p>
+    <div class="formula">S = Σ (P(xₖ) − yₖ)² → min</div>
+    <p>Приравнивая к нулю производные S по каждому коэффициенту Cᵢ, получаем систему линейных уравнений (нормальные уравнения):</p>
+    <div class="step"><b>Матрица A</b>: элемент Aᵢⱼ = Σ xₖ^(i+j)</div>
+    <div class="step"><b>Вектор B</b>: элемент Bᵢ = Σ yₖ·xₖ^i</div>
+    <div class="step">Решаем A·C = B → получаем коэффициенты C₀, C₁, …, Cₙ</div>
+    <p style="color:var(--muted); font-size:0.85rem;">Степень полинома должна быть меньше числа точек, и на практике редко берут больше 5–7 — иначе система становится плохо обусловленной.</p>
+  </div>
+
+  <div class="card" id="horner">
+    <h2>Схема Горнера</h2>
+    <p>Вместо прямого вычисления C₀ + C₁x + C₂x² + C₃x³ (с явным возведением в степень) полином переписывается как:</p>
+    <div class="formula">P(x) = (...(( Cₙ·x + Cₙ₋₁)·x + …)·x + C₀)</div>
+    <p>Это то же самое значение, но считается за n умножений и n сложений вместо отдельного возведения в степень для каждого члена — быстрее и меньше накопленная ошибка округления.</p>
+  </div>
+
+  <div class="card" id="viz">
+    <h2>Визуализация — подбираем степень полинома</h2>
+    <div class="controls">
+      <span>Степень:</span>
+      <div class="seg" id="degSeg">
+        <button data-deg="1">1</button>
+        <button data-deg="2" class="active">2</button>
+        <button data-deg="3">3</button>
+        <button data-deg="4">4</button>
+      </div>
+    </div>
+    <div class="chart-box" id="chartBox"></div>
+    <div class="readout" id="readout"></div>
+  </div>
+
+</div>
+
+<script>
+const xs = [-2,-1,0,1,2,3];
+const ys = [1,0,1,4,9,16]; // y = x^2 + 2x + 1
+
+function solveLinear(A, b) {
+  const n = b.length;
+  const M = A.map((row,i) => [...row, b[i]]);
+  for (let col = 0; col < n; col++) {
+    let piv = col;
+    for (let r = col+1; r < n; r++) if (Math.abs(M[r][col]) > Math.abs(M[piv][col])) piv = r;
+    [M[col], M[piv]] = [M[piv], M[col]];
+    for (let r = 0; r < n; r++) {
+      if (r === col) continue;
+      const f = M[r][col] / M[col][col];
+      for (let c = col; c <= n; c++) M[r][c] -= f * M[col][c];
+    }
+  }
+  return M.map((row,i) => row[n] / row[i]);
+}
+
+function leastSquares(degree) {
+  const n = degree + 1;
+  const A = Array.from({length:n}, () => new Array(n).fill(0));
+  const B = new Array(n).fill(0);
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      A[i][j] = xs.reduce((s,x) => s + Math.pow(x, i+j), 0);
+    }
+    B[i] = xs.reduce((s,x,k) => s + ys[k]*Math.pow(x,i), 0);
+  }
+  return solveLinear(A, B);
+}
+
+function horner(coefs, x) {
+  let result = coefs[coefs.length-1];
+  for (let i = coefs.length-2; i >= 0; i--) result = result*x + coefs[i];
+  return result;
+}
+
+let degree = 2;
+
+function render() {
+  const coefs = leastSquares(degree);
+  const W = 720, H = 380, PAD = 46;
+  const xMin = Math.min(...xs)-0.5, xMax = Math.max(...xs)+0.5;
+  const grid = [];
+  for (let g = 0; g <= 300; g++) grid.push(xMin + (xMax-xMin)*g/300);
+  const curve = grid.map(x => horner(coefs, x));
+  let allY = ys.concat(curve);
+  let yMin = Math.min(...allY), yMax = Math.max(...allY);
+  const yPad = (yMax-yMin)*0.12 || 1;
+  yMin -= yPad; yMax += yPad;
+
+  const px = x => PAD + (x-xMin)/(xMax-xMin)*(W-2*PAD);
+  const py = y => H-PAD - (y-yMin)/(yMax-yMin)*(H-2*PAD);
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">`;
+  svg += `<line x1="${PAD}" y1="${H-PAD}" x2="${W-PAD}" y2="${H-PAD}" stroke="currentColor" stroke-opacity="0.3"/>`;
+  svg += `<line x1="${PAD}" y1="${PAD}" x2="${PAD}" y2="${H-PAD}" stroke="currentColor" stroke-opacity="0.3"/>`;
+  for (let i = 0; i <= 6; i++) {
+    const v = xMin + (xMax-xMin)*i/6, x = px(v);
+    svg += `<text x="${x}" y="${H-PAD+18}" font-size="10" fill="currentColor" opacity="0.6" text-anchor="middle">${v.toFixed(1)}</text>`;
+  }
+  for (let i = 0; i <= 5; i++) {
+    const v = yMin + (yMax-yMin)*i/5, y = py(v);
+    svg += `<text x="${PAD-9}" y="${y+3}" font-size="10" fill="currentColor" opacity="0.6" text-anchor="end">${v.toFixed(1)}</text>`;
+  }
+
+  const path = grid.map((gx,i) => `${i===0?'M':'L'} ${px(gx)} ${py(curve[i])}`).join(' ');
+  svg += `<path d="${path}" fill="none" stroke="#4f6df5" stroke-width="2.4"/>`;
+
+  xs.forEach((xv,i) => { svg += `<circle cx="${px(xv)}" cy="${py(ys[i])}" r="6" fill="#f5a04f" stroke="black" stroke-width="0.5"/>`; });
+
+  svg += `</svg>`;
+  document.getElementById('chartBox').innerHTML = svg;
+
+  let totalError = 0;
+  xs.forEach((x,k) => { totalError += Math.abs(horner(coefs,x) - ys[k]); });
+
+  const coefStr = coefs.map((c,i) => `C${i}=${c.toFixed(4)}`).join(', ');
+  document.getElementById('readout').innerHTML =
+    `<div>${coefStr}</div><div>Суммарная ошибка ≈ ${totalError.toExponential(2)}</div>`;
+}
+
+document.querySelectorAll('#degSeg button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#degSeg button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    degree = parseInt(btn.dataset.deg);
+    render();
+  });
+});
+render();
+</script>
+</body>
+</html>

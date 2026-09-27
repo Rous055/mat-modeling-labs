@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Лабораторная работа 7 — нелинейные уравнения</title>
+<style>
+  :root {
+    --bg: #f7f7fa; --card: #ffffff; --text: #1c1c22; --muted: #6b6b76;
+    --accent: #4f6df5; --accent2: #f5a04f; --accent3: #33ad7a; --bad: #e0556a; --border: #e4e4ea;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #14141a; --card: #1e1e26; --text: #eaeaf0; --muted: #9a9aa6; --border: #2c2c36; }
+  }
+  :root[data-theme="dark"] { --bg: #14141a; --card: #1e1e26; --text: #eaeaf0; --muted: #9a9aa6; --border: #2c2c36; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.6; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 32px 20px 60px; }
+  h1 { font-size: 1.6rem; margin-bottom: 4px; }
+  .sub { color: var(--muted); margin-top: 0; margin-bottom: 24px; font-size: 0.95rem; }
+  .toc { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+  .toc a { font-size: 0.85rem; text-decoration: none; color: var(--accent); background: rgba(79,109,245,0.1); padding: 6px 12px; border-radius: 20px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px; margin-bottom: 20px; }
+  h2 { font-size: 1.12rem; margin-top: 0; }
+  code { background: rgba(127,127,127,0.12); border-radius: 6px; font-size: 0.85em; padding: 2px 6px; }
+  .formula { font-size: 1.0rem; background: rgba(127,127,127,0.08); border-radius: 10px; padding: 10px 16px; margin: 10px 0; text-align: center; overflow-x: auto; }
+  .step { border-left: 3px solid var(--border); padding: 4px 0 4px 14px; margin: 10px 0; }
+  .step b { color: var(--accent); }
+  .note { color: var(--muted); font-size: 0.85rem; }
+  .controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+  .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .seg button { border: none; border-radius: 0; background: var(--card); color: var(--text); padding: 6px 12px; font-size: 0.88rem; cursor: pointer; }
+  .seg button.active { background: var(--accent); color: white; }
+  .btn { border: 1px solid var(--accent); background: var(--accent); color: white; border-radius: 8px; padding: 6px 14px; font-size: 0.88rem; cursor: pointer; }
+  .btn.ghost { background: transparent; color: var(--accent); }
+  .chart { background: rgba(127,127,127,0.05); border-radius: 10px; padding: 6px; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.8rem; color: var(--muted); padding: 2px 6px 4px; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; }
+  .readout { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; font-size: 0.85rem; }
+  .readout div { padding: 6px 12px; border-radius: 8px; background: rgba(127,127,127,0.08); }
+  .readout .ok { background: rgba(51,173,122,0.15); }
+  .readout .no { background: rgba(224,85,106,0.15); }
+  .table-wrap { overflow-x: auto; margin-top: 10px; max-height: 260px; overflow-y: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+  th, td { padding: 5px 10px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--muted); font-weight: 600; position: sticky; top: 0; background: var(--card); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Лабораторная работа 7 — решение нелинейных уравнений</h1>
+  <p class="sub">Ипатенков Г.А. · ИВТ-4 · вариант 6 — a·x + sin x − b = 0, a = 0.5, b = 1, ε = 10⁻⁶</p>
+
+  <div class="toc">
+    <a href="#sep">Отделение корня</a>
+    <a href="#conv">Условия сходимости</a>
+    <a href="#viz">Методы по шагам</a>
+    <a href="#test">Тест</a>
+    <a href="#result">Итоги</a>
+  </div>
+
+  <div class="card" id="sep">
+    <h2>Этап 1 — отделение корня</h2>
+    <div class="formula">f(x) = 0.5x + sin x − 1, &nbsp;&nbsp; f′(x) = 0.5 + cos x, &nbsp;&nbsp; f″(x) = −sin x</div>
+    <p>f′ = 0 при x = 2π/3 и 4π/3. В этих точках f ≈ 0.91 и f ≈ 0.23, обе значения положительные. Поэтому ось x пересекается только один раз, левее 2π/3.</p>
+    <p>Графически: уравнение переписывается как <b>0.5x − 1 = −sin x</b>, корень — точка пересечения прямой и синусоиды. По знакам f(0.5) = −0.27 и f(1) = +0.34 получаем интервал локализации <b>[A, B] = [0.5; 1]</b>.</p>
+  </div>
+
+  <div class="card" id="conv">
+    <h2>Условия сходимости на [0.5; 1]</h2>
+    <div class="step"><b>Дихотомия.</b> f(A)·f(B) = −0.27·0.34 &lt; 0 ✓. Больше ничего не требуется.</div>
+    <div class="step"><b>Хорды.</b> f′ ∈ [1.04; 1.38] &gt; 0, f″ ∈ [−0.84; −0.48] &lt; 0, знаки постоянны ✓. Это случай «в» на рис. 9: неподвижен конец A (там f·f″ &gt; 0), движение начинается от x₀ = B.</div>
+    <div class="step"><b>Простая итерация.</b> φ(x) = x + g·f(x) (6), g = −2/(m + M) = −0.827. Тогда max|φ′| = 0.14 &lt; 1 ✓. Запись «в лоб» x = 2(1 − sin x) даёт |φ′| = 2|cos x| &gt; 1, и итерации расходятся.</div>
+    <div class="step"><b>Ньютон.</b> f′ и f″ разных знаков, поэтому x₀ = A = 0.5. Проверка: f(x₀)·f″(x₀) = 0.13 &gt; 0 ✓.</div>
+    <p class="note">ε = 10⁻⁶ взята с большим запасом над машинной погрешностью 2.2·10⁻¹⁶ (пункт 3 задания).</p>
+  </div>
+
+  <div class="card" id="viz">
+    <h2>Методы по шагам</h2>
+    <div class="controls">
+      <div class="seg" id="mSeg">
+        <button data-m="bis" class="active">Дихотомия</button>
+        <button data-m="chd">Хорды</button>
+        <button data-m="it">Простая итерация</button>
+        <button data-m="bad">Итерация x = 2(1 − sin x)</button>
+        <button data-m="nw">Ньютон</button>
+      </div>
+    </div>
+    <div class="controls">
+      <button class="btn" id="stepBtn">Шаг →</button>
+      <button class="btn ghost" id="allBtn">До конца</button>
+      <button class="btn ghost" id="resetBtn">Сброс</button>
+    </div>
+    <div class="formula" id="mFormula"></div>
+    <div class="chart">
+      <div id="chart"></div>
+      <div class="legend" id="legend"></div>
+    </div>
+    <div class="readout" id="out"></div>
+    <div class="table-wrap"><table id="tbl"></table></div>
+  </div>
+
+  <div class="card" id="test">
+    <h2>Тест на квадратном уравнении (пункт 10)</h2>
+    <div class="formula">x² − x − 6 = 0, &nbsp; D = 1 + 24 = 25, &nbsp; x₁,₂ = (1 ± 5)/2 → x₁ = 3, x₂ = −2</div>
+    <div class="table-wrap" style="max-height:none"><table id="testTbl"></table></div>
+    <p class="note">Для простой итерации записи: x = √(x + 6) у корня 3 и x = −√(x + 6) у корня −2, |φ′| ≈ 0.17 и 0.25. Все методы нашли оба корня с ошибкой меньше ε, значит процедуры написаны верно.</p>
+  </div>
+
+  <div class="card" id="result">
+    <h2>Итоги для уравнения варианта</h2>
+    <div class="table-wrap" style="max-height:none"><table id="resTbl"></table></div>
+    <p class="note">Дихотомия надёжна, но медленна: отрезок за шаг уменьшается только вдвое. Хорды и простая итерация сходятся линейно. Ньютон сходится квадратично: число верных знаков примерно удваивается на каждом шаге. Логарифмы в Python: <code>math.log</code> — это ln, <code>math.log10</code> — lg, <code>math.log(x, a)</code> — логарифм по основанию a.</p>
+  </div>
+
+</div>
+
+<script>
+const a = 0.5, b = 1, EPS = 1e-6, NMAX = 100, A = 0.5, B = 1;
+const f = x => a * x + Math.sin(x) - b;
+const df = x => a + Math.cos(x);
+const d2f = x => -Math.sin(x);
+const G = -2 / (df(B) + df(A));
+const phi = x => x + G * f(x);
+const phiBad = x => 2 * (1 - Math.sin(x));
+
+// ---------- методы: возвращают массив шагов ----------
+function bisection(f, lo, hi) {
+  const st = [];
+  for (let n = 1; n <= NMAX; n++) {
+    const c = (lo + hi) / 2;
+    st.push({ x: c, lo, hi });
+    if (f(lo) * f(c) < 0) hi = c; else lo = c;
+    if (hi - lo < 2 * EPS) { st.push({ x: (lo + hi) / 2, lo, hi }); break; }
+  }
+  return st;
+}
+
+function chord(f, lo, hi, d2f) {
+  const c = f(lo) * d2f(lo) > 0 ? lo : hi;
+  let x = c === lo ? hi : lo;
+  const st = [{ x, c }];
+  for (let n = 1; n <= NMAX; n++) {
+    const xn = x - f(x) * (x - c) / (f(x) - f(c));
+    st.push({ x: xn, c, from: x });
+    if (Math.abs(xn - x) < EPS) break;
+    x = xn;
+  }
+  return st;
+}
+
+function iterate(phi, x0, nmax = NMAX) {
+  let x = x0;
+  const st = [{ x }];
+  for (let n = 1; n <= nmax; n++) {
+    const xn = phi(x);
+    st.push({ x: xn, from: x });
+    if (!isFinite(xn) || Math.abs(xn - x) < EPS) break;
+    x = xn;
+  }
+  return st;
+}
+
+function newton(f, df, x0) {
+  let x = x0;
+  const st = [{ x }];
+  for (let n = 1; n <= NMAX; n++) {
+    const xn = x - f(x) / df(x);
+    st.push({ x: xn, from: x });
+    if (Math.abs(xn - x) < EPS) break;
+    x = xn;
+  }
+  return st;
+}
+
+// эталон
+let xRef = 0.5; for (let i = 0; i < 50; i++) xRef -= f(xRef) / df(xRef);
+
+const METHODS = {
+  bis: { name: 'Дихотомия', formula: 'x = (A + B)/2; оставляем половину, где f меняет знак; стоп, когда B − A &lt; 2ε', run: () => bisection(f, A, B) },
+  chd: { name: 'Хорды', formula: 'xₙ₊₁ = xₙ − f(xₙ)·(xₙ − A)/(f(xₙ) − f(A)), конец A неподвижен; стоп: |xₙ₊₁ − xₙ| &lt; ε', run: () => chord(f, A, B, d2f) },
+  it:  { name: 'Простая итерация', formula: `xₙ₊₁ = φ(xₙ) = xₙ + g·f(xₙ), g = ${G.toFixed(4)}, max|φ′| = 0.14`, run: () => iterate(phi, 0.75) },
+  bad: { name: 'Итерация x = 2(1 − sin x)', formula: 'xₙ₊₁ = 2(1 − sin xₙ), |φ′| = 2|cos x| &gt; 1 около корня — процесс расходится', run: () => iterate(phiBad, 0.75, 20) },
+  nw:  { name: 'Ньютон', formula: 'xₙ₊₁ = xₙ − f(xₙ)/f′(xₙ), x₀ = A = 0.5 (f(x₀)·f″(x₀) &gt; 0)', run: () => newton(f, df, A) },
+};
+
+// ---------- SVG ----------
+function chart(el, { xMin, xMax, yMin, yMax, draw }) {
+  const W = 760, H = 360, L = 50, R = 14, T = 12, Bt = 30;
+  const px = x => L + (x - xMin) / (xMax - xMin) * (W - L - R);
+  const py = y => H - Bt - (y - yMin) / (yMax - yMin) * (H - T - Bt);
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" xmlns="http://www.w3.org/2000/svg" style="display:block">`;
+  for (let i = 0; i <= 5; i++) {
+    const v = yMin + (yMax - yMin) * i / 5, y = py(v);
+    s += `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" stroke="currentColor" stroke-opacity="0.1"/>`;
+    s += `<text x="${L - 6}" y="${y + 3}" font-size="10" fill="currentColor" opacity="0.6" text-anchor="end">${v.toFixed(2)}</text>`;
+  }
+  for (let i = 0; i <= 8; i++) {
+    const v = xMin + (xMax - xMin) * i / 8;
+    s += `<text x="${px(v)}" y="${H - Bt + 16}" font-size="10" fill="currentColor" opacity="0.6" text-anchor="middle">${v.toFixed(2)}</text>`;
+  }
+  if (yMin < 0 && yMax > 0) s += `<line x1="${L}" x2="${W - R}" y1="${py(0)}" y2="${py(0)}" stroke="currentColor" stroke-opacity="0.5"/>`;
+  el.innerHTML = s + draw(px, py) + '</svg>';
+}
+
+const path = (fn, x0, x1, px, py, color = 'var(--accent)', w = 2.4) => {
+  let d = '';
+  for (let i = 0; i <= 300; i++) { const x = x0 + (x1 - x0) * i / 300; d += `${i ? 'L' : 'M'}${px(x).toFixed(1)} ${py(fn(x)).toFixed(1)}`; }
+  return `<path d="${d}" fill="none" stroke="${color}" stroke-width="${w}"/>`;
+};
+const seg = (x1, y1, x2, y2, px, py, c = 'var(--bad)', dash = '') => `<line x1="${px(x1)}" y1="${py(y1)}" x2="${px(x2)}" y2="${py(y2)}" stroke="${c}" stroke-width="1.4" ${dash ? `stroke-dasharray="${dash}"` : ''}/>`;
+const dot = (x, y, px, py, c = 'var(--bad)', r = 4) => `<circle cx="${px(x)}" cy="${py(y)}" r="${r}" fill="${c}"/>`;
+
+// ---------- состояние ----------
+let method = 'bis', steps = [], shown = 1;
+
+function render() {
+  const M = METHODS[method];
+  document.getElementById('mFormula').innerHTML = M.formula;
+  const cur = steps.slice(0, shown);
+  const el = document.getElementById('chart');
+  const legend = document.getElementById('legend');
+
+  if (method === 'it' || method === 'bad') {
+    const fn = method === 'it' ? phi : phiBad;
+    const lim = method === 'it' ? [0.45, 1.05] : [-0.2, 2.2];
+    chart(el, {
+      xMin: lim[0], xMax: lim[1], yMin: lim[0], yMax: lim[1],
+      draw: (px, py) => {
+        let s = path(x => x, lim[0], lim[1], px, py, 'currentColor', 1) + path(fn, lim[0], lim[1], px, py);
+        cur.forEach((p, i) => {
+          if (i === 0) { s += dot(p.x, p.x, px, py, 'var(--accent2)'); return; }
+          s += seg(p.from, p.from, p.from, p.x, px, py) + seg(p.from, p.x, p.x, p.x, px, py);
+        });
+        const last = cur[cur.length - 1];
+        return s + dot(last.x, last.x, px, py);
+      },
+    });
+    legend.innerHTML = `<span><i style="background:var(--accent)"></i>y = φ(x)</span><span><i style="background:currentColor;opacity:.5"></i>y = x</span><span><i style="background:var(--bad)"></i>«лестница» итераций</span>`;
+  } else {
+    chart(el, {
+      xMin: 0.4, xMax: 1.05, yMin: -0.4, yMax: 0.45,
+      draw: (px, py) => {
+        let s = `<rect x="${px(A)}" y="${py(0.45)}" width="${px(B) - px(A)}" height="${py(-0.4) - py(0.45)}" fill="var(--accent3)" fill-opacity="0.06"/>`;
+        s += path(f, 0.4, 1.05, px, py);
+        const last = cur[cur.length - 1];
+        if (method === 'bis') {
+          s += `<rect x="${px(last.lo)}" y="${py(0.45)}" width="${Math.max(1, px(last.hi) - px(last.lo))}" height="${py(-0.4) - py(0.45)}" fill="var(--accent2)" fill-opacity="0.2"/>`;
+          cur.forEach(p => { s += seg(p.x, 0, p.x, f(p.x), px, py, 'var(--bad)', '3 3'); });
+        } else if (method === 'chd') {
+          cur.forEach(p => {
+            if (p.from === undefined) return;
+            s += seg(p.c, f(p.c), p.from, f(p.from), px, py) + seg(p.x, 0, p.x, f(p.x), px, py, 'var(--bad)', '3 3');
+          });
+          s += dot(cur[0].c, f(cur[0].c), px, py, 'var(--accent3)', 5);
+        } else {
+          cur.forEach(p => {
+            if (p.from === undefined) return;
+            s += seg(p.from, 0, p.from, f(p.from), px, py, 'var(--bad)', '3 3') + seg(p.from, f(p.from), p.x, 0, px, py);
+          });
+        }
+        cur.forEach(p => { s += dot(p.x, 0, px, py, 'var(--bad)', 3); });
+        return s + dot(last.x, 0, px, py, 'var(--accent2)', 5);
+      },
+    });
+    const extra = method === 'bis' ? '<span><i style="background:var(--accent2);opacity:.4"></i>текущий отрезок</span>' :
+      method === 'chd' ? '<span><i style="background:var(--accent3)"></i>неподвижный конец A</span><span><i style="background:var(--bad)"></i>хорды</span>' :
+      '<span><i style="background:var(--bad)"></i>касательные</span>';
+    legend.innerHTML = `<span><i style="background:var(--accent)"></i>f(x)</span>${extra}<span><i style="background:var(--accent2)"></i>текущее xₙ</span>`;
+  }
+
+  const last = cur[cur.length - 1];
+  const done = shown === steps.length;
+  const err = Math.abs(last.x - xRef);
+  const diverged = method === 'bad';
+  document.getElementById('out').innerHTML = [
+    `<div>итерация ${shown - 1}${done ? ' (последняя)' : ''} из ${steps.length - 1}</div>`,
+    `<div>xₙ = ${last.x.toFixed(10)}</div>`,
+    `<div>f(xₙ) = ${f(last.x).toExponential(2)}</div>`,
+    `<div class="${err < EPS ? 'ok' : 'no'}">|xₙ − x*| = ${err.toExponential(2)}</div>`,
+    done && diverged ? `<div class="no">не сошлось за 20 итераций</div>` : '',
+  ].join('');
+
+  document.getElementById('tbl').innerHTML = `<tr><th>n</th><th>xₙ</th><th>f(xₙ)</th><th>|xₙ − xₙ₋₁|</th><th>|xₙ − x*|</th></tr>` +
+    cur.map((p, i) => `<tr><td>${i}</td><td>${p.x.toFixed(10)}</td><td>${f(p.x).toExponential(2)}</td><td>${i ? Math.abs(p.x - cur[i - 1].x).toExponential(2) : '—'}</td><td>${Math.abs(p.x - xRef).toExponential(2)}</td></tr>`).join('');
+}
+
+function select(m) {
+  method = m;
+  steps = METHODS[m].run();
+  shown = 1;
+  render();
+}
+
+document.querySelectorAll('#mSeg button').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('#mSeg button').forEach(x => x.classList.remove('active'));
+  btn.classList.add('active');
+  select(btn.dataset.m);
+}));
+document.getElementById('stepBtn').addEventListener('click', () => { if (shown < steps.length) { shown++; render(); } });
+document.getElementById('allBtn').addEventListener('click', () => { shown = steps.length; render(); });
+document.getElementById('resetBtn').addEventListener('click', () => { shown = 1; render(); });
+
+// ---------- таблицы ----------
+const qf = x => x * x - x - 6, qdf = x => 2 * x - 1, qd2f = () => 2;
+const testRows = [];
+for (const [exact, lo, hi, ph, x0n] of [[3, 2.5, 4, x => Math.sqrt(x + 6), 4], [-2, -3, -1.5, x => -Math.sqrt(x + 6), -3]]) {
+  const res = [['Дихотомия', bisection(qf, lo, hi)], ['Хорды', chord(qf, lo, hi, qd2f)], ['Простая итерация', iterate(ph, (lo + hi) / 2)], ['Ньютон', newton(qf, qdf, x0n)]];
+  res.forEach(([name, st]) => {
+    const x = st[st.length - 1].x;
+    testRows.push(`<tr><td>${exact} — ${name}</td><td>${x.toFixed(10)}</td><td>${st.length - 1}</td><td>${Math.abs(x - exact).toExponential(2)}</td></tr>`);
+  });
+}
+document.getElementById('testTbl').innerHTML = `<tr><th>Корень — метод</th><th>Найдено</th><th>Итераций</th><th>|x − x_точн|</th></tr>` + testRows.join('');
+
+document.getElementById('resTbl').innerHTML = `<tr><th>Метод</th><th>Корень</th><th>Итераций</th><th>|f(x)|</th><th>|x − x*|</th></tr>` +
+  ['bis', 'chd', 'it', 'nw'].map(k => {
+    const st = METHODS[k].run(), x = st[st.length - 1].x;
+    return `<tr><td>${METHODS[k].name}</td><td>${x.toFixed(10)}</td><td>${st.length - 1}</td><td>${Math.abs(f(x)).toExponential(2)}</td><td>${Math.abs(x - xRef).toExponential(2)}</td></tr>`;
+  }).join('') + `<tr><td>Эталон x*</td><td>${xRef.toFixed(12)}</td><td></td><td></td><td></td></tr>`;
+
+select('bis');
+</script>
+</body>
+</html>

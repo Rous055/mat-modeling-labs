@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Погрешности вычисления — вариант 6</title>
+<style>
+  :root {
+    --bg: #f7f7fa; --card: #ffffff; --text: #1c1c22; --muted: #6b6b76;
+    --accent: #4f6df5; --accent2: #f5a04f; --accent3: #33ad7a; --border: #e4e4ea;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14141a; --card: #1e1e26; --text: #eaeaf0; --muted: #9a9aa6; --border: #2c2c36;
+    }
+  }
+  :root[data-theme="dark"] { --bg: #14141a; --card: #1e1e26; --text: #eaeaf0; --muted: #9a9aa6; --border: #2c2c36; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.6; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 32px 20px 60px; }
+  h1 { font-size: 1.6rem; margin-bottom: 4px; }
+  .sub { color: var(--muted); margin-top: 0; margin-bottom: 28px; font-size: 0.95rem; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px; margin-bottom: 20px; }
+  h2 { font-size: 1.15rem; margin-top: 0; display: flex; align-items: center; gap: 8px; }
+  .tag { font-size: 0.72rem; background: rgba(79,109,245,0.15); color: var(--accent); padding: 2px 9px; border-radius: 20px; font-weight: 600; }
+  .step { border-left: 3px solid var(--border); padding: 4px 0 4px 14px; margin: 10px 0; }
+  .step b { color: var(--accent); }
+  code { background: rgba(127,127,127,0.12); border-radius: 6px; padding: 2px 6px; font-size: 0.9em; }
+  .formula { font-size: 1.05rem; background: rgba(127,127,127,0.08); border-radius: 10px; padding: 10px 16px; margin: 10px 0; text-align: center; }
+  .answer { background: rgba(51,173,122,0.12); border: 1px solid rgba(51,173,122,0.3); border-radius: 10px; padding: 10px 16px; margin-top: 10px; font-weight: 600; }
+  .bars { margin-top: 14px; }
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 0.88rem; }
+  .bar-label { width: 130px; flex-shrink: 0; }
+  .bar-track { flex: 1; background: rgba(127,127,127,0.12); border-radius: 6px; height: 22px; position: relative; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 6px; display: flex; align-items: center; padding-left: 8px; color: white; font-size: 0.78rem; white-space: nowrap; }
+  .digits { display: flex; gap: 4px; font-family: monospace; font-size: 1.3rem; margin: 14px 0; flex-wrap: wrap; }
+  .digit { width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: rgba(127,127,127,0.1); border: 1px solid var(--border); position: relative; }
+  .digit .pos { position: absolute; bottom: -18px; font-size: 0.62rem; color: var(--muted); font-family: -apple-system, sans-serif; }
+  .digit.lead { background: rgba(79,109,245,0.2); border-color: var(--accent); }
+  .digit.last { background: rgba(245,160,79,0.2); border-color: var(--accent2); }
+  .toc { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+  .toc a { font-size: 0.85rem; text-decoration: none; color: var(--accent); background: rgba(79,109,245,0.1); padding: 6px 12px; border-radius: 20px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Погрешности вычисления</h1>
+  <p class="sub">Ипатенков Г.А. · ИВТ-4 · вариант 6</p>
+
+  <div class="toc">
+    <a href="#basics">Основные понятия</a>
+    <a href="#t1">Задача 1</a>
+    <a href="#t2">Задача 2</a>
+    <a href="#t3">Задача 3</a>
+  </div>
+
+  <div class="card" id="basics">
+    <h2>Основные понятия — в двух словах</h2>
+    <p><b>Абсолютная погрешность (Δ)</b> — насколько приближённое число отличается от точного, в тех же единицах: Δ = |x − a|.</p>
+    <p><b>Относительная погрешность (δ)</b> — та же разница, но в процентах от самого числа: δ = Δ / |a|. Она удобнее для сравнения, потому что не зависит от масштаба числа: ошибка в 1 см у линейки в 1 м и ошибка в 1 см у линейки в 1 км — это разная точность, и δ это сразу показывает.</p>
+    <p>Чем <b>меньше δ</b>, тем точнее число.</p>
+  </div>
+
+  <div class="card" id="t1">
+    <h2>Задача 1 <span class="tag">какое равенство точнее</span></h2>
+    <p>Условие (вариант 6): 16/7 = 2.280 или √15 = 3.873 — какое из двух округлений точнее?</p>
+    <div class="step"><b>Шаг 1.</b> Считаем оба выражения с большей точностью (больше знаков после запятой):<br>
+      a₁ = 16/7 = 2.28571…, a₂ = √15 = 3.87298…</div>
+    <div class="step"><b>Шаг 2.</b> Сравниваем с округлёнными версиями из условия — это и есть абсолютная погрешность:<br>
+      Δ₁ = |2.28571 − 2.280| = 0.00571<br>
+      Δ₂ = |3.87298 − 3.873| = 0.00002</div>
+    <div class="step"><b>Шаг 3.</b> Переводим в относительную (делим на само число):<br>
+      δ₁ = 0.00571 / 2.280 ≈ 0.25%<br>
+      δ₂ = 0.00002 / 3.873 ≈ 0.0005%</div>
+    <div class="bars">
+      <div class="bar-row"><div class="bar-label">δ₁ (16/7)</div>
+        <div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--accent2)">0.25%</div></div></div>
+      <div class="bar-row"><div class="bar-label">δ₂ (√15)</div>
+        <div class="bar-track"><div class="bar-fill" style="width:2%;background:var(--accent3)">0.0005%</div></div></div>
+    </div>
+    <div class="answer">δ₂ намного меньше δ₁ → округление √15 = 3.873 точнее.</div>
+  </div>
+
+  <div class="card" id="t2">
+    <h2>Задача 2 <span class="tag">округление сомнительных цифр</span></h2>
+    <p>Условие: a = 0.34484 (δ = 0.40%) и b = 0.66385 (±0.00042). Нужно оставить только те цифры, которым можно доверять, и посчитать итоговую погрешность.</p>
+    <p><b>Правило простое:</b> берём число, пробуем округлить до следующего разряда, складываем погрешность округления с исходной. Если сумма меньше 0.05 (половины разряда, до которого округлили) — округление годится. Если нет — округляем ещё грубее и проверяем снова.</p>
+    <div class="step"><b>Число a:</b> сначала Δa = 0.40% × 0.34484 = 0.00138 (переводим относительную в абсолютную).<br>
+      Пробуем оставить сотые (0.34): добавочная погрешность округления 0.00484, итого 0.00622 — это <b>больше</b> 0.005, не проходит.<br>
+      Пробуем оставить десятые (0.3): погрешность округления 0.04484, итого 0.0462 — это <b>меньше</b> 0.05, подходит.</div>
+    <div class="answer">a ≈ 0.3, Δa ≈ 0.047</div>
+    <div class="step"><b>Число b:</b> Δb уже дано = 0.00042.<br>
+      Пробуем оставить тысячные (0.664): итого 0.00057 — больше 0.0005, не проходит.<br>
+      Пробуем оставить сотые (0.66): итого 0.00427 — меньше 0.005, подходит.</div>
+    <div class="answer">b ≈ 0.66, Δb ≈ 0.0043</div>
+  </div>
+
+  <div class="card" id="t3">
+    <h2>Задача 3 <span class="tag">погрешность числа с верными цифрами</span></h2>
+    <p>Условие: числа 2.0430 и 16.3830, у которых <b>все</b> цифры считаются верными (надёжными). Нужно найти границы погрешности.</p>
+    <p>Идея: у каждой цифры есть "разряд" — позиция после запятой (10⁻¹, 10⁻², …) или до неё (10⁰, 10¹, …). Погрешность связана с разрядом последней цифры, а масштаб числа — с разрядом первой (старшей) цифры.</p>
+
+    <p><b>Число 2.0430</b></p>
+    <div class="digits">
+      <div class="digit lead">2<span class="pos">10⁰</span></div>
+      <div class="digit">0<span class="pos">10⁻¹</span></div>
+      <div class="digit">4<span class="pos">10⁻²</span></div>
+      <div class="digit">3<span class="pos">10⁻³</span></div>
+      <div class="digit last">0<span class="pos">10⁻⁴</span></div>
+    </div>
+    <div class="step">Старшая цифра "2" стоит в разряде 10⁰ (n = 0). Последняя цифра — в разряде 10⁻⁴ (m = −4). Число верных цифр: k = n − m + 1 = 5.</div>
+    <div class="formula">Δ = 0.5 × 10⁻⁴ = 0.00005 &nbsp;&nbsp;|&nbsp;&nbsp; δ = 0.5 / (aₙ × 10^(k−1)) = 0.5 / (2 × 10⁴)</div>
+    <div class="answer">Δ ≈ 0.00005, δ ≈ 0.0025%</div>
+
+    <p><b>Число 16.3830</b></p>
+    <div class="digits">
+      <div class="digit lead">1<span class="pos">10¹</span></div>
+      <div class="digit">6<span class="pos">10⁰</span></div>
+      <div class="digit">3<span class="pos">10⁻¹</span></div>
+      <div class="digit">8<span class="pos">10⁻²</span></div>
+      <div class="digit">3<span class="pos">10⁻³</span></div>
+      <div class="digit last">0<span class="pos">10⁻⁴</span></div>
+    </div>
+    <div class="step">Старшая цифра "1" стоит в разряде 10¹ (n = 1). Последняя цифра — в разряде 10⁻⁴ (m = −4). Число верных цифр: k = n − m + 1 = 6.</div>
+    <div class="formula">Δ = 0.5 × 10⁻⁴ = 0.00005 &nbsp;&nbsp;|&nbsp;&nbsp; δ = 0.5 / (aₙ × 10^(k−1)) = 0.5 / (1 × 10⁵)</div>
+    <div class="answer">Δ ≈ 0.00005, δ ≈ 0.0005%</div>
+
+    <p style="margin-top:14px; color:var(--muted); font-size:0.85rem;">Обратите внимание: у обоих чисел одинаковая абсолютная погрешность (0.00005), но разная относительная — потому что 16.383 крупнее по масштабу (больше "запас прочности" на ту же абсолютную ошибку).</p>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Лабораторная работа 5 — моделирование случайных величин</title>
+<style>
+  :root {
+    --bg: #f7f7fa; --card: #ffffff; --text: #1c1c22; --muted: #6b6b76;
+    --accent: #4f6df5; --accent2: #f5a04f; --accent3: #33ad7a; --bad: #e0556a; --border: #e4e4ea;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #14141a; --card: #1e1e26; --text: #eaeaf0; --muted: #9a9aa6; --border: #2c2c36; }
+  }
+  :root[data-theme="dark"] { --bg: #14141a; --card: #1e1e26; --text: #eaeaf0; --muted: #9a9aa6; --border: #2c2c36; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.6; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 32px 20px 60px; }
+  h1 { font-size: 1.6rem; margin-bottom: 4px; }
+  .sub { color: var(--muted); margin-top: 0; margin-bottom: 24px; font-size: 0.95rem; }
+  .toc { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+  .toc a { font-size: 0.85rem; text-decoration: none; color: var(--accent); background: rgba(79,109,245,0.1); padding: 6px 12px; border-radius: 20px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px; margin-bottom: 20px; }
+  h2 { font-size: 1.12rem; margin-top: 0; }
+  h3 { font-size: 0.98rem; margin: 18px 0 6px; }
+  code { background: rgba(127,127,127,0.12); border-radius: 6px; font-size: 0.85em; padding: 2px 6px; }
+  .formula { font-size: 1.0rem; background: rgba(127,127,127,0.08); border-radius: 10px; padding: 10px 16px; margin: 10px 0; text-align: center; overflow-x: auto; }
+  .step { border-left: 3px solid var(--border); padding: 4px 0 4px 14px; margin: 10px 0; }
+  .step b { color: var(--accent); }
+  .note { color: var(--muted); font-size: 0.85rem; }
+  .controls { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+  .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .seg button { border: none; border-radius: 0; background: var(--card); color: var(--text); padding: 6px 12px; font-size: 0.88rem; cursor: pointer; }
+  .seg button.active { background: var(--accent); color: white; }
+  .params { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px 18px; margin-bottom: 14px; }
+  .params label { font-size: 0.85rem; display: flex; flex-direction: column; gap: 2px; }
+  .params label span b { color: var(--accent); }
+  .params input[type=range] { width: 100%; accent-color: var(--accent); }
+  .btn { border: 1px solid var(--accent); background: var(--accent); color: white; border-radius: 8px; padding: 6px 14px; font-size: 0.88rem; cursor: pointer; }
+  .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 720px) { .charts { grid-template-columns: 1fr; } }
+  .chart { background: rgba(127,127,127,0.05); border-radius: 10px; padding: 6px; }
+  .chart-title { font-size: 0.85rem; color: var(--muted); padding: 2px 6px; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.8rem; color: var(--muted); padding: 2px 6px 4px; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; }
+  .table-wrap { overflow-x: auto; margin-top: 14px; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.88rem; }
+  th, td { padding: 6px 10px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--muted); font-weight: 600; }
+  .readout { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; font-size: 0.85rem; }
+  .readout div { padding: 6px 12px; border-radius: 8px; background: rgba(127,127,127,0.08); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Лабораторная работа 5 — моделирование непрерывных случайных величин</h1>
+  <p class="sub">Ипатенков Г.А. · ИВТ-4 · вариант 6 — равномерный (1; 7), гауссовский N(6; 2²), усечённый рэлеевский b = 1.5 на (0; 4.5), N = 6000</p>
+
+  <div class="toc">
+    <a href="#base">Основы</a>
+    <a href="#inverse">Обратная функция</a>
+    <a href="#clt">ЦПТ</a>
+    <a href="#neyman">Метод Неймана</a>
+    <a href="#hist">Гистограмма</a>
+    <a href="#viz">Визуализация</a>
+  </div>
+
+  <div class="card" id="base">
+    <h2>Основы</h2>
+    <p>Непрерывная случайная величина X задаётся функцией распределения и плотностью вероятности:</p>
+    <div class="formula">F(x) = P(X &lt; x), &nbsp;&nbsp; w(x) = dF(x)/dx, &nbsp;&nbsp; ∫ w(x) dx = 1</div>
+    <p>На компьютере есть только <b>базовые случайные числа</b> rᵢ, равномерно распределённые на (0, 1): это <code>random()</code>. Любой другой закон получается преобразованием этих чисел. В лабораторной используются три способа:</p>
+    <div class="step"><b>Метод обратной функции</b>: когда F(x) можно явно обратить (равномерный закон).</div>
+    <div class="step"><b>Центральная предельная теорема</b>: сумма многих равномерных величин почти нормальна (гауссовский закон).</div>
+    <div class="step"><b>Метод Неймана</b>: универсальный отбор точек под кривой плотности (усечённый рэлеевский закон).</div>
+  </div>
+
+  <div class="card" id="inverse">
+    <h2>1. Равномерный закон — метод обратной функции</h2>
+    <p>F(x) возрастает, поэтому у неё есть обратная функция x = G(y). Если подставить в G равномерное r, получится x с нужным законом:</p>
+    <div class="formula">xᵢ = G(rᵢ) = F⁻¹(rᵢ)</div>
+    <p>Для равномерного закона на (a, b), формула (65):</p>
+    <div class="formula">F(x) = (x − a)/(b − a) &nbsp;⇒&nbsp; xᵢ = rᵢ·(b − a) + a &nbsp;&nbsp;(68)</div>
+    <div class="formula">mₓ = (a + b)/2 &nbsp;(66), &nbsp;&nbsp; σₓ² = (b − a)²/12 &nbsp;(67)</div>
+    <p class="note">Вариант 6: (a, b) = (1; 7), значит mₓ = 4, σₓ² = 3.</p>
+  </div>
+
+  <div class="card" id="clt">
+    <h2>2. Гауссовский закон — центральная предельная теорема</h2>
+    <p>Функцию Лапласа (73) нельзя обратить в элементарных функциях. Зато сумма n независимых равномерных величин по ЦПТ стремится к нормальному закону:</p>
+    <div class="step"><b>Шаг 1.</b> v = r₁ + r₂ + … + rₙ, при этом m_v = n/2, D_v² = n/12</div>
+    <div class="step"><b>Шаг 2.</b> Нормируем: ξ = (v − m_v)/D_v = √(12/n) · Σ(rᵢ − 0.5) ~ N(0, 1)</div>
+    <div class="step"><b>Шаг 3.</b> Переходим к нужным параметрам: X = D·ξ + m</div>
+    <div class="formula">w(x) = 1/√(2πD²) · exp(−(x − m)²/2D²) &nbsp;&nbsp;(74)</div>
+    <p class="note">На одно гауссовское число тратится n базовых, коэффициент использования датчика равен 1/n. Значения ограничены промежутком m ± D√(3n), поэтому «хвосты» обрезаны. В методичке в шаге 2 в знаменателе напечатано D_v², правильно — D_v.</p>
+  </div>
+
+  <div class="card" id="neyman">
+    <h2>3. Усечённый рэлеевский закон — метод Неймана</h2>
+    <div class="formula">w(x) = x/b² · exp(−x²/2b²), &nbsp;&nbsp; F(x) = 1 − exp(−x²/2b²) &nbsp;&nbsp;(69)</div>
+    <p>Плотность вписывается в прямоугольник (0, x_max) × (0, M), где M = max w(x) = w(b) = e^(−1/2)/b.</p>
+    <div class="step"><b>Шаг 1.</b> Бросаем случайную точку: R₁ = x_max·rᵢ, R₂ = M·rⱼ</div>
+    <div class="step"><b>Шаг 2.</b> Если R₂ ≤ w(R₁), точка под кривой, и xᵢ = R₁ идёт в выборку</div>
+    <div class="step"><b>Шаг 3.</b> Иначе точка отбрасывается, повторяем</div>
+    <p>После усечения плотность нормируется на вероятность попасть в интервал:</p>
+    <div class="formula">w_ус(x) = w(x)/F(x_max), &nbsp;&nbsp; F_ус(x) = F(x)/F(x_max), &nbsp;&nbsp; 0 &lt; x &lt; x_max</div>
+    <p class="note">Доля принятых точек равна площади под кривой, делённой на площадь прямоугольника: F(x_max)/(M·x_max). Неусечённые моменты (70), (71): mₓ = b√(π/2), σₓ² = (2 − π/2)b².</p>
+  </div>
+
+  <div class="card" id="hist">
+    <h2>Гистограмма, полигон и выборочные моменты</h2>
+    <div class="step"><b>Интервалы.</b> k = 5·lg N, при этом 9 &lt; k &lt; 21. Для симметричных законов k нечётное.</div>
+    <div class="step"><b>Ширина.</b> d = 1.02·(x_max − x_min), Δx = d/k. Для одностороннего закона левая граница a = 0.</div>
+    <div class="step"><b>Гистограмма.</b> ωᵢ = kᵢ/(N·Δx), сравнивается с w(x) в центрах интервалов.</div>
+    <div class="step"><b>Полигон.</b> F_q = (k₁ + … + k_q)/N, сравнивается с F(x) в концах интервалов.</div>
+    <div class="formula">mₓ = (1/N)·Σxᵢ &nbsp;(75), &nbsp;&nbsp; D² = (1/N)·Σ(xᵢ − m)² &nbsp;(76), &nbsp;&nbsp; D² = (1/N)·Σ(xᵢ − mₓ)² &nbsp;(77)</div>
+  </div>
+
+  <div class="card" id="viz">
+    <h2>Визуализация — генерируем выборки</h2>
+    <div class="controls">
+      <div class="seg" id="distSeg">
+        <button data-d="uni" class="active">Равномерный</button>
+        <button data-d="gauss">Гауссовский (ЦПТ)</button>
+        <button data-d="ray">Рэлеевский (Нейман)</button>
+      </div>
+      <button class="btn" id="regen">Сгенерировать заново</button>
+    </div>
+    <div class="params" id="params"></div>
+
+    <div class="charts">
+      <div class="chart">
+        <div class="chart-title">Гистограмма и теоретическая плотность w(x)</div>
+        <div id="histChart"></div>
+        <div class="legend"><span><i style="background:var(--accent);opacity:.55"></i>ωᵢ = kᵢ/(NΔx)</span><span><i style="background:var(--accent2)"></i>w(x)</span></div>
+      </div>
+      <div class="chart">
+        <div class="chart-title">Полигон накопленных частот и F(x)</div>
+        <div id="cdfChart"></div>
+        <div class="legend"><span><i style="background:var(--accent)"></i>F_q</span><span><i style="background:var(--accent2)"></i>F(x)</span></div>
+      </div>
+    </div>
+
+    <div class="chart" id="neymanBox" style="margin-top:14px" hidden>
+      <div class="chart-title">Метод Неймана: первые 1500 брошенных точек</div>
+      <div id="neymanChart"></div>
+      <div class="legend"><span><i style="background:var(--accent3)"></i>принята (под кривой)</span><span><i style="background:var(--bad)"></i>отброшена</span><span><i style="background:var(--accent2)"></i>w(x)</span></div>
+    </div>
+
+    <div class="readout" id="readout"></div>
+    <div class="table-wrap"><table id="moments"></table></div>
+  </div>
+
+</div>
+
+<script>
+const P = { N: 6000, a: 1, b: 7, m: 6, D: 2, n: 12, br: 1.5, xmax: 4.5 };
+let dist = 'uni';
+
+const PARAMS = {
+  uni:   [['a', 'a', -5, 5, 0.5], ['b', 'b', 1, 15, 0.5]],
+  gauss: [['m', 'm', -5, 15, 0.5], ['D', 'D (СКО)', 0.5, 5, 0.1], ['n', 'n слагаемых ЦПТ', 1, 24, 1]],
+  ray:   [['br', 'b', 0.5, 4, 0.1], ['xmax', 'x_max (усечение)', 1, 12, 0.1]],
+};
+
+// ---------- генераторы ----------
+function genUniform(N) {
+  return Float64Array.from({ length: N }, () => Math.random() * (P.b - P.a) + P.a);
+}
+
+function genGauss(N) {
+  const out = new Float64Array(N), k = Math.sqrt(12 / P.n);
+  for (let i = 0; i < N; i++) {
+    let s = 0;
+    for (let j = 0; j < P.n; j++) s += Math.random() - 0.5;
+    out[i] = P.D * k * s + P.m;
+  }
+  return out;
+}
+
+const rayPdf = x => x < 0 ? 0 : x / P.br ** 2 * Math.exp(-x * x / (2 * P.br ** 2));
+const rayCdf = x => x < 0 ? 0 : 1 - Math.exp(-x * x / (2 * P.br ** 2));
+
+function genNeyman(N) {
+  const M = rayPdf(Math.min(P.br, P.xmax));
+  const out = [], pts = [];
+  let tries = 0;
+  while (out.length < N) {
+    const R1 = P.xmax * Math.random(), R2 = M * Math.random();
+    const ok = R2 <= rayPdf(R1);
+    tries++;
+    if (pts.length < 1500) pts.push([R1, R2, ok]);
+    if (ok) out.push(R1);
+  }
+  return { x: Float64Array.from(out), pts, tries, M };
+}
+
+// ---------- теория ----------
+function erf(x) {  // Абрамовиц–Стиган 7.1.26
+  const s = Math.sign(x); x = Math.abs(x);
+  const t = 1 / (1 + 0.3275911 * x);
+  const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
+  return s * y;
+}
+
+function theory() {
+  if (dist === 'uni') return {
+    pdf: x => (x >= P.a && x <= P.b) ? 1 / (P.b - P.a) : 0,
+    cdf: x => Math.min(1, Math.max(0, (x - P.a) / (P.b - P.a))),
+    m: (P.a + P.b) / 2, v: (P.b - P.a) ** 2 / 12, symmetric: true,
+  };
+  if (dist === 'gauss') return {
+    pdf: x => Math.exp(-((x - P.m) ** 2) / (2 * P.D ** 2)) / Math.sqrt(2 * Math.PI * P.D ** 2),
+    cdf: x => 0.5 * (1 + erf((x - P.m) / (P.D * Math.SQRT2))),
+    m: P.m, v: P.D ** 2, symmetric: true,
+  };
+  const Ft = rayCdf(P.xmax);
+  const pdf = x => (x >= 0 && x <= P.xmax) ? rayPdf(x) / Ft : 0;
+  let m = 0, v = 0; const K = 4000, h = P.xmax / K;
+  for (let i = 0; i <= K; i++) { const x = i * h, w = (i === 0 || i === K ? 0.5 : 1) * pdf(x) * h; m += x * w; }
+  for (let i = 0; i <= K; i++) { const x = i * h, w = (i === 0 || i === K ? 0.5 : 1) * pdf(x) * h; v += (x - m) ** 2 * w; }
+  return { pdf, cdf: x => Math.min(1, rayCdf(x) / Ft), m, v, symmetric: false, oneSided: true, Ft };
+}
+
+// ---------- группировка (п. 6–7) ----------
+function grouping(x, symmetric, oneSided) {
+  const N = x.length;
+  let lo = Infinity, hi = -Infinity;
+  for (const v of x) { if (v < lo) lo = v; if (v > hi) hi = v; }
+  let k = Math.round(5 * Math.log10(N));
+  k = Math.min(Math.max(k, 10), 20);
+  if (symmetric && k % 2 === 0) k -= 1;
+  let left, d;
+  if (oneSided) { left = 0; d = 1.02 * hi; } else { d = 1.02 * (hi - lo); left = lo - 0.01 * (hi - lo); }
+  const dx = d / k, counts = new Array(k).fill(0);
+  for (const v of x) counts[Math.min(Math.floor((v - left) / dx), k - 1)]++;
+  const omega = counts.map(c => c / (N * dx));
+  const Fq = []; counts.reduce((s, c, i) => (Fq[i] = (s + c) / N, s + c), 0);
+  return { k, left, dx, counts, omega, Fq };
+}
+
+// ---------- SVG-график ----------
+function chart(el, { xMin, xMax, yMax, draw }) {
+  const W = 460, H = 300, L = 44, R = 12, T = 12, B = 30;
+  const px = x => L + (x - xMin) / (xMax - xMin) * (W - L - R);
+  const py = y => H - B - y / yMax * (H - T - B);
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" xmlns="http://www.w3.org/2000/svg" style="display:block">`;
+  for (let i = 0; i <= 5; i++) {
+    const v = yMax * i / 5, y = py(v);
+    s += `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" stroke="currentColor" stroke-opacity="0.1"/>`;
+    s += `<text x="${L - 6}" y="${y + 3}" font-size="10" fill="currentColor" opacity="0.6" text-anchor="end">${v.toFixed(yMax < 1.5 ? 2 : 1)}</text>`;
+  }
+  for (let i = 0; i <= 6; i++) {
+    const v = xMin + (xMax - xMin) * i / 6;
+    s += `<text x="${px(v)}" y="${H - B + 16}" font-size="10" fill="currentColor" opacity="0.6" text-anchor="middle">${v.toFixed(1)}</text>`;
+  }
+  s += `<line x1="${L}" y1="${H - B}" x2="${W - R}" y2="${H - B}" stroke="currentColor" stroke-opacity="0.35"/>`;
+  s += draw(px, py);
+  el.innerHTML = s + '</svg>';
+}
+
+const curvePath = (f, a, b, px, py) => {
+  let d = '';
+  for (let i = 0; i <= 300; i++) { const x = a + (b - a) * i / 300; d += `${i ? 'L' : 'M'}${px(x).toFixed(1)} ${py(f(x)).toFixed(1)}`; }
+  return `<path d="${d}" fill="none" stroke="var(--accent2)" stroke-width="2.4"/>`;
+};
+
+// ---------- отрисовка ----------
+let sample = null, neyman = null;
+
+function generate() {
+  if (dist === 'uni') sample = genUniform(P.N);
+  else if (dist === 'gauss') sample = genGauss(P.N);
+  else { neyman = genNeyman(P.N); sample = neyman.x; }
+  render();
+}
+
+function render() {
+  const th = theory();
+  const g = grouping(sample, th.symmetric, th.oneSided);
+  const xMin = g.left, xMax = g.left + g.k * g.dx;
+
+  const yMaxH = Math.max(...g.omega, th.pdf(dist === 'gauss' ? P.m : dist === 'ray' ? Math.min(P.br, P.xmax) : (P.a + P.b) / 2)) * 1.15;
+  chart(document.getElementById('histChart'), {
+    xMin, xMax, yMax: yMaxH,
+    draw: (px, py) => g.omega.map((w, i) => {
+      const x0 = px(g.left + i * g.dx), x1 = px(g.left + (i + 1) * g.dx);
+      return `<rect x="${x0}" y="${py(w)}" width="${x1 - x0}" height="${py(0) - py(w)}" fill="var(--accent)" fill-opacity="0.45" stroke="var(--accent)" stroke-width="0.8"/>`;
+    }).join('') + curvePath(th.pdf, xMin, xMax, px, py),
+  });
+
+  chart(document.getElementById('cdfChart'), {
+    xMin, xMax, yMax: 1.05,
+    draw: (px, py) => {
+      let d = `M${px(xMin)} ${py(0)}`;
+      g.Fq.forEach((F, i) => { d += `L${px(g.left + i * g.dx)} ${py(F)}L${px(g.left + (i + 1) * g.dx)} ${py(F)}`; });
+      return `<path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2.2"/>` + curvePath(th.cdf, xMin, xMax, px, py);
+    },
+  });
+
+  const box = document.getElementById('neymanBox');
+  box.hidden = dist !== 'ray';
+  if (dist === 'ray') {
+    chart(document.getElementById('neymanChart'), {
+      xMin: 0, xMax: P.xmax, yMax: neyman.M * 1.08,
+      draw: (px, py) => `<rect x="${px(0)}" y="${py(neyman.M)}" width="${px(P.xmax) - px(0)}" height="${py(0) - py(neyman.M)}" fill="none" stroke="currentColor" stroke-opacity="0.4" stroke-dasharray="4 3"/>` +
+        neyman.pts.map(([x, y, ok]) => `<circle cx="${px(x).toFixed(1)}" cy="${py(y).toFixed(1)}" r="1.8" fill="${ok ? 'var(--accent3)' : 'var(--bad)'}" fill-opacity="0.7"/>`).join('') +
+        curvePath(rayPdf, 0, P.xmax, px, py),
+    });
+  }
+
+  const N = sample.length;
+  let mx = 0; for (const v of sample) mx += v; mx /= N;
+  let d76 = 0, d77 = 0; for (const v of sample) { d76 += (v - th.m) ** 2; d77 += (v - mx) ** 2; }
+  d76 /= N; d77 /= N;
+  const err = (e, t) => (Math.abs(e - t) / Math.abs(t) * 100).toFixed(2);
+  document.getElementById('moments').innerHTML =
+    `<tr><th>Характеристика</th><th>Теория</th><th>Выборка</th><th>Погр., %</th></tr>` +
+    `<tr><td>Среднее mₓ (75)</td><td>${th.m.toFixed(4)}</td><td>${mx.toFixed(4)}</td><td>${err(mx, th.m)}</td></tr>` +
+    `<tr><td>Дисперсия D² (76), m известно</td><td>${th.v.toFixed(4)}</td><td>${d76.toFixed(4)}</td><td>${err(d76, th.v)}</td></tr>` +
+    `<tr><td>Дисперсия D² (77), m неизвестно</td><td>${th.v.toFixed(4)}</td><td>${d77.toFixed(4)}</td><td>${err(d77, th.v)}</td></tr>`;
+
+  const info = [`N = ${N}`, `k = ${g.k}`, `Δx = ${g.dx.toFixed(3)}`, `min kᵢ = ${Math.min(...g.counts)}`];
+  if (dist === 'gauss') info.push(`базовых чисел: ${N * P.n}`, `использование датчика 1/n = ${(1 / P.n).toFixed(3)}`);
+  if (dist === 'ray') info.push(`M = ${neyman.M.toFixed(3)}`, `доля принятых: ${(N / neyman.tries).toFixed(3)} (теория ${(th.Ft / (neyman.M * P.xmax)).toFixed(3)})`,
+    `неусечённые: m = ${(P.br * Math.sqrt(Math.PI / 2)).toFixed(3)}, σ² = ${((2 - Math.PI / 2) * P.br ** 2).toFixed(3)}`);
+  document.getElementById('readout').innerHTML = info.map(s => `<div>${s}</div>`).join('');
+}
+
+function buildParams() {
+  const list = [['N', 'Объём выборки N', 1000, 20000, 1000], ...PARAMS[dist]];
+  const box = document.getElementById('params');
+  box.innerHTML = list.map(([key, label, min, max, step]) =>
+    `<label><span>${label} = <b id="v_${key}">${P[key]}</b></span><input type="range" data-k="${key}" min="${min}" max="${max}" step="${step}" value="${P[key]}"></label>`).join('');
+  box.querySelectorAll('input').forEach(inp => inp.addEventListener('input', () => {
+    const k = inp.dataset.k;
+    P[k] = parseFloat(inp.value);
+    if (k === 'a' && P.a >= P.b) P.a = P.b - 0.5;
+    if (k === 'b' && P.b <= P.a) P.b = P.a + 0.5;
+    inp.value = P[k];
+    document.getElementById('v_' + k).textContent = P[k];
+    generate();
+  }));
+}
+
+document.querySelectorAll('#distSeg button').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('#distSeg button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  dist = btn.dataset.d;
+  buildParams();
+  generate();
+}));
+document.getElementById('regen').addEventListener('click', generate);
+
+buildParams();
+generate();
+</script>
+</body>
+</html>

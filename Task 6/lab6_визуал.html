@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Лабораторная работа 6 — трапеции и Монте-Карло</title>
+<style>
+  :root {
+    --bg: #f7f7fa; --card: #ffffff; --text: #1c1c22; --muted: #6b6b76;
+    --accent: #4f6df5; --accent2: #f5a04f; --accent3: #33ad7a; --bad: #e0556a; --border: #e4e4ea;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #14141a; --card: #1e1e26; --text: #eaeaf0; --muted: #9a9aa6; --border: #2c2c36; }
+  }
+  :root[data-theme="dark"] { --bg: #14141a; --card: #1e1e26; --text: #eaeaf0; --muted: #9a9aa6; --border: #2c2c36; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.6; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 32px 20px 60px; }
+  h1 { font-size: 1.6rem; margin-bottom: 4px; }
+  .sub { color: var(--muted); margin-top: 0; margin-bottom: 24px; font-size: 0.95rem; }
+  .toc { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+  .toc a { font-size: 0.85rem; text-decoration: none; color: var(--accent); background: rgba(79,109,245,0.1); padding: 6px 12px; border-radius: 20px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px; margin-bottom: 20px; }
+  h2 { font-size: 1.12rem; margin-top: 0; }
+  code { background: rgba(127,127,127,0.12); border-radius: 6px; font-size: 0.85em; padding: 2px 6px; }
+  .formula { font-size: 1.0rem; background: rgba(127,127,127,0.08); border-radius: 10px; padding: 10px 16px; margin: 10px 0; text-align: center; overflow-x: auto; }
+  .step { border-left: 3px solid var(--border); padding: 4px 0 4px 14px; margin: 10px 0; }
+  .step b { color: var(--accent); }
+  .note { color: var(--muted); font-size: 0.85rem; }
+  .controls { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+  .controls label { font-size: 0.88rem; display: flex; align-items: center; gap: 8px; flex: 1 1 260px; }
+  .controls input[type=range] { flex: 1; accent-color: var(--accent); }
+  .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .seg button { border: none; border-radius: 0; background: var(--card); color: var(--text); padding: 6px 12px; font-size: 0.88rem; cursor: pointer; }
+  .seg button.active { background: var(--accent); color: white; }
+  .btn { border: 1px solid var(--accent); background: var(--accent); color: white; border-radius: 8px; padding: 6px 14px; font-size: 0.88rem; cursor: pointer; }
+  .chart { background: rgba(127,127,127,0.05); border-radius: 10px; padding: 6px; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.8rem; color: var(--muted); padding: 2px 6px 4px; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; }
+  .readout { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; font-size: 0.85rem; }
+  .readout div { padding: 6px 12px; border-radius: 8px; background: rgba(127,127,127,0.08); }
+  .readout .ok { background: rgba(51,173,122,0.15); }
+  .readout .no { background: rgba(224,85,106,0.15); }
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.88rem; }
+  th, td { padding: 6px 10px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--muted); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Лабораторная работа 6 — численное интегрирование и метод Монте-Карло</h1>
+  <p class="sub">Ипатенков Г.А. · ИВТ-4 · вариант 6 — f(x) = 1/(1 + x²), a = 0.5, b = 2, допустимая ошибка 1%</p>
+
+  <div class="toc">
+    <a href="#exact">Аналитика</a>
+    <a href="#trap">Трапеции</a>
+    <a href="#mc">Монте-Карло</a>
+    <a href="#err">Выбор N</a>
+    <a href="#result">Итоги</a>
+  </div>
+
+  <div class="card" id="exact">
+    <h2>Аналитическое решение</h2>
+    <p>Первообразная табличная: ∫ dx/(1 + x²) = arctg x + C. По формуле Ньютона–Лейбница:</p>
+    <div class="formula">I = arctg 2 − arctg 0.5 = arctg((2 − 0.5)/(1 + 2·0.5)) = arctg(3/4) ≈ 0.6435011</div>
+    <p class="note">На [0.5; 2] функция положительна и убывает от f(0.5) = 0.8 до f(2) = 0.2. Интеграл — это площадь под кривой.</p>
+  </div>
+
+  <div class="card" id="trap">
+    <h2>Метод трапеций</h2>
+    <p>Отрезок делится на N частей с шагом h = (b − a)/N. На каждой части кривая заменяется отрезком прямой, и площади трапеций складываются:</p>
+    <div class="formula">I ≈ h · [ (f(a) + f(b))/2 + f(x₁) + … + f(x_{N−1}) ] &nbsp;&nbsp;(6)</div>
+    <div class="formula">R ≤ (b − a)·h²/12 · max|f″(ξ)| &nbsp;&nbsp;(7), &nbsp;&nbsp; f″(x) = (6x² − 2)/(1 + x²)³</div>
+    <div class="controls">
+      <label>Число разбиений N = <b id="nVal">4</b><input type="range" id="nTrap" min="1" max="20" step="1" value="4"></label>
+    </div>
+    <div class="chart">
+      <div id="trapChart"></div>
+      <div class="legend"><span><i style="background:var(--accent);opacity:.35"></i>трапеции</span><span><i style="background:var(--accent2)"></i>f(x)</span></div>
+    </div>
+    <div class="readout" id="trapOut"></div>
+  </div>
+
+  <div class="card" id="mc">
+    <h2>Метод Монте-Карло</h2>
+    <div class="step"><b>Способ 1 — выборочное среднее.</b> uᵢ = a + (b − a)·rᵢ, &nbsp; I* = (b − a)/N · Σ f(uᵢ) &nbsp;(10). Каждая случайная точка даёт «столбик» ширины (b − a)/N.</div>
+    <div class="step"><b>Способ 2 — геометрический.</b> Кривая вписывается в прямоугольник [a, b] × [0, M], M = f(0.5) = 0.8. Бросаем точки X = a + (b − a)r₁, Y = M·r₂ и считаем k — сколько точек под кривой: I* = M·(b − a)·k/N &nbsp;(11).</div>
+    <div class="controls">
+      <div class="seg" id="mcSeg">
+        <button data-m="1" class="active">Способ 1</button>
+        <button data-m="2">Способ 2</button>
+      </div>
+      <label>N = <b id="mcNVal">1000</b><input type="range" id="mcN" min="1" max="5" step="0.05" value="3"></label>
+      <button class="btn" id="mcRegen">Бросить заново</button>
+    </div>
+    <div class="chart">
+      <div id="mcChart"></div>
+      <div class="legend" id="mcLegend"></div>
+    </div>
+    <div class="readout" id="mcOut"></div>
+  </div>
+
+  <div class="card" id="err">
+    <h2>Сколько испытаний нужно для ошибки 1%</h2>
+    <p>По ЦПТ ошибка оценки распределена нормально. С надёжностью γ она меньше δ = t·σ/√N &nbsp;(13), (14). Требуем δ = 0.01·I:</p>
+    <div class="formula">N = ( t·σ / (ε·I) )², &nbsp;&nbsp; γ = 0.997 → t ≈ 2.97 (правило трёх сигм)</div>
+    <div class="step"><b>Шаг 1.</b> N₀ = 1000 пробных испытаний дают оценку σ*.</div>
+    <div class="step"><b>Шаг 2.</b> По формуле находим N. Если N &gt; N₀, добираем испытания.</div>
+    <div class="step"><b>Шаг 3.</b> Считаем 100 независимых оценок I*ᵢ и их выборочное СКО.</div>
+    <div class="controls"><button class="btn" id="runSeries">Запустить 100 оценок для обоих способов</button></div>
+    <div class="chart">
+      <div id="histChart"></div>
+      <div class="legend"><span><i style="background:var(--accent);opacity:.6"></i>способ 1</span><span><i style="background:var(--accent2);opacity:.6"></i>способ 2</span><span><i style="background:var(--accent3);opacity:.25"></i>коридор ±1%</span></div>
+    </div>
+    <div class="table-wrap" style="margin-top:12px"><table id="seriesTable"></table></div>
+    <p class="note">Ошибка Монте-Карло убывает как 1/√N: чтобы получить ещё один верный знак, нужно в 100 раз больше точек. В способе 2 каждая точка несёт только «да/нет», поэтому σ одного испытания больше и точек нужно примерно в 5 раз больше.</p>
+  </div>
+
+  <div class="card" id="result">
+    <h2>Итоги (прогон ноутбука)</h2>
+    <div class="table-wrap"><table>
+      <tr><th>Метод</th><th>I</th><th>Ошибка, %</th><th>Итераций</th><th>СКО {I*}</th></tr>
+      <tr><td>Аналитически</td><td>0.643501</td><td>0</td><td>—</td><td>—</td></tr>
+      <tr><td>Метод трапеций</td><td>0.649235</td><td>0.89</td><td>5 узлов (N = 4)</td><td>—</td></tr>
+      <tr><td>Монте-Карло, способ 1</td><td>0.644053</td><td>0.09</td><td>≈ 15 000 точек</td><td>0.00218</td></tr>
+      <tr><td>Монте-Карло, способ 2</td><td>0.643247</td><td>0.04</td><td>≈ 76 000 точек</td><td>0.00214</td></tr>
+    </table></div>
+    <p class="note">Для гладкой функции одной переменной трапециям хватает 5 узлов, а Монте-Карло нужны тысячи точек. Преимущество Монте-Карло — в многомерных интегралах: сеточным методам там нужно N^k узлов, а трудоёмкость Монте-Карло от размерности почти не зависит.</p>
+  </div>
+
+</div>
+
+<script>
+const a = 0.5, b = 2, EPS = 0.01, T = 2.968;
+const f = x => 1 / (1 + x * x);
+const I = Math.atan(b) - Math.atan(a);
+const M = f(a);
+
+// ---------- SVG ----------
+function chart(el, { xMin, xMax, yMin = 0, yMax, draw, H = 300, xDigits = 1 }) {
+  const W = 760, L = 48, R = 14, Tp = 12, B = 30;
+  const px = x => L + (x - xMin) / (xMax - xMin) * (W - L - R);
+  const py = y => H - B - (y - yMin) / (yMax - yMin) * (H - Tp - B);
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" xmlns="http://www.w3.org/2000/svg" style="display:block">`;
+  for (let i = 0; i <= 5; i++) {
+    const v = yMin + (yMax - yMin) * i / 5, y = py(v);
+    s += `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" stroke="currentColor" stroke-opacity="0.1"/>`;
+    s += `<text x="${L - 6}" y="${y + 3}" font-size="10" fill="currentColor" opacity="0.6" text-anchor="end">${v.toFixed(2)}</text>`;
+  }
+  for (let i = 0; i <= 6; i++) {
+    const v = xMin + (xMax - xMin) * i / 6;
+    s += `<text x="${px(v)}" y="${H - B + 16}" font-size="10" fill="currentColor" opacity="0.6" text-anchor="middle">${v.toFixed(xDigits)}</text>`;
+  }
+  s += `<line x1="${L}" y1="${py(yMin)}" x2="${W - R}" y2="${py(yMin)}" stroke="currentColor" stroke-opacity="0.35"/>`;
+  el.innerHTML = s + draw(px, py) + '</svg>';
+}
+
+const curve = (px, py, x0 = a, x1 = b) => {
+  let d = '';
+  for (let i = 0; i <= 200; i++) { const x = x0 + (x1 - x0) * i / 200; d += `${i ? 'L' : 'M'}${px(x).toFixed(1)} ${py(f(x)).toFixed(1)}`; }
+  return `<path d="${d}" fill="none" stroke="var(--accent2)" stroke-width="2.6"/>`;
+};
+
+const pct = v => (v * 100).toFixed(3) + '%';
+
+// ---------- трапеции ----------
+function trapezoid(n) {
+  const h = (b - a) / n;
+  let s = (f(a) + f(b)) / 2;
+  for (let i = 1; i < n; i++) s += f(a + i * h);
+  return s * h;
+}
+
+function renderTrap() {
+  const n = +document.getElementById('nTrap').value;
+  document.getElementById('nVal').textContent = n;
+  const h = (b - a) / n;
+  chart(document.getElementById('trapChart'), {
+    xMin: a - 0.05, xMax: b + 0.05, yMax: 0.9, xDigits: 2,
+    draw: (px, py) => {
+      let s = '';
+      for (let i = 0; i < n; i++) {
+        const x0 = a + i * h, x1 = x0 + h;
+        s += `<polygon points="${px(x0)},${py(0)} ${px(x0)},${py(f(x0))} ${px(x1)},${py(f(x1))} ${px(x1)},${py(0)}" fill="var(--accent)" fill-opacity="0.25" stroke="var(--accent)" stroke-width="1"/>`;
+        s += `<circle cx="${px(x0)}" cy="${py(f(x0))}" r="3.5" fill="var(--accent)"/>`;
+      }
+      s += `<circle cx="${px(b)}" cy="${py(f(b))}" r="3.5" fill="var(--accent)"/>`;
+      return s + curve(px, py);
+    },
+  });
+  const val = trapezoid(n), e = Math.abs(val - I) / I;
+  const bound = (b - a) * h * h / 12 * 0.5;
+  document.getElementById('trapOut').innerHTML = [
+    `<div>узлов: ${n + 1}, h = ${h.toFixed(4)}</div>`,
+    `<div>I_трап = ${val.toFixed(6)}</div>`,
+    `<div class="${e <= EPS ? 'ok' : 'no'}">ошибка ${pct(e)} ${e <= EPS ? '≤ 1% ✓' : '> 1%'}</div>`,
+    `<div>оценка (7): R ≤ ${bound.toExponential(2)}</div>`,
+    `<div>|I_N − I_2N| = ${Math.abs(val - trapezoid(2 * n)).toExponential(2)}</div>`,
+  ].join('');
+}
+
+// ---------- Монте-Карло ----------
+let method = 1;
+
+function mcEstimate(m, n) {
+  let s = 0;
+  if (m === 1) { for (let i = 0; i < n; i++) s += f(a + (b - a) * Math.random()); return (b - a) * s / n; }
+  for (let i = 0; i < n; i++) if (M * Math.random() <= f(a + (b - a) * Math.random())) s++;
+  return M * (b - a) * s / n;
+}
+
+function renderMC() {
+  const n = Math.round(10 ** +document.getElementById('mcN').value);
+  document.getElementById('mcNVal').textContent = n;
+  const show = Math.min(n, 3000);
+  const xs = Array.from({ length: n }, () => a + (b - a) * Math.random());
+  let est, draw;
+  if (method === 1) {
+    const w = (b - a) / n;
+    est = (b - a) * xs.reduce((s, x) => s + f(x), 0) / n;
+    draw = (px, py) => xs.slice(0, show).map(x =>
+      `<line x1="${px(x).toFixed(1)}" x2="${px(x).toFixed(1)}" y1="${py(0)}" y2="${py(f(x)).toFixed(1)}" stroke="var(--accent)" stroke-opacity="${Math.max(0.08, Math.min(0.7, 40 / show))}" stroke-width="${Math.max(1, px(a + w) - px(a))}"/>`
+    ).join('') + curve(px, py);
+    document.getElementById('mcLegend').innerHTML = `<span><i style="background:var(--accent);opacity:.5"></i>«столбики» f(uᵢ) в случайных точках</span><span><i style="background:var(--accent2)"></i>f(x)</span>`;
+  } else {
+    const ys = xs.map(() => M * Math.random());
+    let k = 0; xs.forEach((x, i) => { if (ys[i] <= f(x)) k++; });
+    est = M * (b - a) * k / n;
+    draw = (px, py) => `<rect x="${px(a)}" y="${py(M)}" width="${px(b) - px(a)}" height="${py(0) - py(M)}" fill="none" stroke="currentColor" stroke-opacity="0.4" stroke-dasharray="4 3"/>` +
+      xs.slice(0, show).map((x, i) => `<circle cx="${px(x).toFixed(1)}" cy="${py(ys[i]).toFixed(1)}" r="2" fill="${ys[i] <= f(x) ? 'var(--accent3)' : 'var(--bad)'}" fill-opacity="0.7"/>`).join('') + curve(px, py);
+    document.getElementById('mcLegend').innerHTML = `<span><i style="background:var(--accent3)"></i>под кривой (k = ${k})</span><span><i style="background:var(--bad)"></i>над кривой</span><span><i style="background:var(--accent2)"></i>f(x)</span>`;
+  }
+  chart(document.getElementById('mcChart'), { xMin: a - 0.05, xMax: b + 0.05, yMax: 0.9, xDigits: 2, draw });
+  const e = Math.abs(est - I) / I;
+  const sigma = method === 1 ? 0.262 : M * (b - a) * Math.sqrt((I / (M * (b - a))) * (1 - I / (M * (b - a))));
+  document.getElementById('mcOut').innerHTML = [
+    `<div>I* = ${est.toFixed(6)}</div>`,
+    `<div class="${e <= EPS ? 'ok' : 'no'}">ошибка ${pct(e)}</div>`,
+    `<div>ожидаемое СКО σ/√N = ${(sigma / Math.sqrt(n)).toFixed(5)}</div>`,
+    `<div>нужно для 1% при γ = 0.997: N ≈ ${Math.ceil((T * sigma / (EPS * I)) ** 2)}</div>`,
+    n > show ? `<div>на графике первые ${show} точек</div>` : '',
+  ].join('');
+}
+
+// ---------- 100 оценок ----------
+function sd(arr) {
+  const m = arr.reduce((s, v) => s + v, 0) / arr.length;
+  return { m, s: Math.sqrt(arr.reduce((s, v) => s + (v - m) ** 2, 0) / (arr.length - 1)) };
+}
+
+function runSeries() {
+  const rows = [];
+  const sets = [];
+  for (const m of [1, 2]) {
+    const pilot = [];
+    for (let i = 0; i < 1000; i++) pilot.push(m === 1 ? (b - a) * f(a + (b - a) * Math.random()) : (M * Math.random() <= f(a + (b - a) * Math.random()) ? M * (b - a) : 0));
+    const sig = sd(pilot).s;
+    const n = Math.ceil((T * sig / (EPS * I)) ** 2);
+    const est = Array.from({ length: 100 }, () => mcEstimate(m, n));
+    const st = sd(est);
+    const inside = est.filter(v => Math.abs(v - I) / I <= EPS).length;
+    rows.push(`<tr><td>Способ ${m}</td><td>${sig.toFixed(4)}</td><td>${n}</td><td>${st.m.toFixed(6)}</td><td>${st.s.toFixed(6)}</td><td>${(sig / Math.sqrt(n)).toFixed(6)}</td><td>${inside} / 100</td></tr>`);
+    sets.push(est);
+  }
+  document.getElementById('seriesTable').innerHTML =
+    `<tr><th>Метод</th><th>σ* (N₀ = 1000)</th><th>N</th><th>Среднее I*</th><th>СКО {I*}</th><th>σ*/√N</th><th>В пределах 1%</th></tr>` + rows.join('');
+
+  const lo = I * 0.985, hi = I * 1.015, K = 30, w = (hi - lo) / K;
+  const counts = sets.map(est => { const c = new Array(K).fill(0); est.forEach(v => { const j = Math.floor((v - lo) / w); if (j >= 0 && j < K) c[j]++; }); return c; });
+  const yMax = Math.max(...counts.flat()) + 2;
+  chart(document.getElementById('histChart'), {
+    xMin: lo, xMax: hi, yMax, H: 260, xDigits: 4,
+    draw: (px, py) => {
+      let s = `<rect x="${px(I * (1 - EPS))}" y="${py(yMax)}" width="${px(I * (1 + EPS)) - px(I * (1 - EPS))}" height="${py(0) - py(yMax)}" fill="var(--accent3)" fill-opacity="0.12"/>`;
+      counts.forEach((c, m) => c.forEach((v, j) => {
+        if (!v) return;
+        const x0 = px(lo + j * w) + (m ? (px(lo + w) - px(lo)) / 2 : 0), bw = (px(lo + w) - px(lo)) / 2;
+        s += `<rect x="${x0}" y="${py(v)}" width="${bw}" height="${py(0) - py(v)}" fill="${m ? 'var(--accent2)' : 'var(--accent)'}" fill-opacity="0.65"/>`;
+      }));
+      s += `<line x1="${px(I)}" x2="${px(I)}" y1="${py(0)}" y2="${py(yMax)}" stroke="currentColor" stroke-width="2"/>`;
+      s += `<text x="${px(I) + 4}" y="${py(yMax) + 12}" font-size="11" fill="currentColor">точное I</text>`;
+      return s;
+    },
+  });
+}
+
+document.getElementById('nTrap').addEventListener('input', renderTrap);
+document.getElementById('mcN').addEventListener('input', renderMC);
+document.getElementById('mcRegen').addEventListener('click', renderMC);
+document.getElementById('runSeries').addEventListener('click', runSeries);
+document.querySelectorAll('#mcSeg button').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('#mcSeg button').forEach(x => x.classList.remove('active'));
+  btn.classList.add('active');
+  method = +btn.dataset.m;
+  renderMC();
+}));
+
+renderTrap();
+renderMC();
+runSeries();
+</script>
+</body>
+</html>

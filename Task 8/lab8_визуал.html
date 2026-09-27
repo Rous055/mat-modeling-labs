@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Лабораторная работа 8 — поиск экстремума</title>
+<style>
+  :root {
+    --bg: #f7f7fa; --card: #ffffff; --text: #1c1c22; --muted: #6b6b76;
+    --accent: #4f6df5; --accent2: #f5a04f; --accent3: #33ad7a; --bad: #e0556a; --border: #e4e4ea;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #14141a; --card: #1e1e26; --text: #eaeaf0; --muted: #9a9aa6; --border: #2c2c36; }
+  }
+  :root[data-theme="dark"] { --bg: #14141a; --card: #1e1e26; --text: #eaeaf0; --muted: #9a9aa6; --border: #2c2c36; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.6; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 32px 20px 60px; }
+  h1 { font-size: 1.6rem; margin-bottom: 4px; }
+  .sub { color: var(--muted); margin-top: 0; margin-bottom: 24px; font-size: 0.95rem; }
+  .toc { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+  .toc a { font-size: 0.85rem; text-decoration: none; color: var(--accent); background: rgba(79,109,245,0.1); padding: 6px 12px; border-radius: 20px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px; margin-bottom: 20px; }
+  h2 { font-size: 1.12rem; margin-top: 0; }
+  code { background: rgba(127,127,127,0.12); border-radius: 6px; font-size: 0.85em; padding: 2px 6px; }
+  .formula { font-size: 1.0rem; background: rgba(127,127,127,0.08); border-radius: 10px; padding: 10px 16px; margin: 10px 0; text-align: center; overflow-x: auto; }
+  .step { border-left: 3px solid var(--border); padding: 4px 0 4px 14px; margin: 10px 0; }
+  .step b { color: var(--accent); }
+  .note { color: var(--muted); font-size: 0.85rem; }
+  .controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+  .controls label { font-size: 0.88rem; display: flex; align-items: center; gap: 8px; }
+  .controls input[type=range] { accent-color: var(--accent); }
+  .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .seg button { border: none; border-radius: 0; background: var(--card); color: var(--text); padding: 6px 12px; font-size: 0.88rem; cursor: pointer; }
+  .seg button.active { background: var(--accent); color: white; }
+  .btn { border: 1px solid var(--accent); background: var(--accent); color: white; border-radius: 8px; padding: 6px 14px; font-size: 0.88rem; cursor: pointer; }
+  .btn.ghost { background: transparent; color: var(--accent); }
+  .chart { background: rgba(127,127,127,0.05); border-radius: 10px; padding: 6px; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.8rem; color: var(--muted); padding: 2px 6px 4px; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; }
+  .readout { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; font-size: 0.85rem; }
+  .readout div { padding: 6px 12px; border-radius: 8px; background: rgba(127,127,127,0.08); }
+  .readout .ok { background: rgba(51,173,122,0.15); }
+  .table-wrap { overflow-x: auto; margin-top: 10px; max-height: 260px; overflow-y: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+  th, td { padding: 5px 10px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--muted); font-weight: 600; position: sticky; top: 0; background: var(--card); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Лабораторная работа 8 — поиск экстремума прямыми методами</h1>
+  <p class="sub">Ипатенков Г.А. · ИВТ-4 · вариант 6 — максимум f(x) = x²·cos(2x + 1), ε = 10⁻⁵, δ = 10⁻⁶</p>
+
+  <div class="toc">
+    <a href="#unimodal">Унимодальность</a>
+    <a href="#methods">Методы</a>
+    <a href="#viz">По шагам</a>
+    <a href="#compare">Сравнение</a>
+  </div>
+
+  <div class="card" id="unimodal">
+    <h2>Интервал унимодальности</h2>
+    <p>Прямые методы находят экстремум только у <b>унимодальной</b> функции, то есть у функции с одним экстремумом на отрезке. Функция x²·cos(2x + 1) колеблется с растущей амплитудой: на [−4; 4] у неё четыре локальных максимума, а глобального максимума нет.</p>
+    <div class="chart">
+      <div id="wideChart"></div>
+      <div class="legend"><span><i style="background:var(--accent)"></i>f(x)</span><span><i style="background:var(--accent3);opacity:.35"></i>выбранный интервал [1.5; 4]</span><span><i style="background:var(--bad)"></i>локальные максимумы</span></div>
+    </div>
+    <p>На <b>[1.5; 4]</b> максимум один. Эталон получен из f′(x) = 0, то есть из уравнения x·tg(2x + 1) = 1, методом Ньютона (лаба 7): <b>x* = 2.812406, f(x*) = 7.452538</b>.</p>
+  </div>
+
+  <div class="card" id="methods">
+    <h2>Процедура исключения отрезка и три метода</h2>
+    <p>Внутри [a, b] ставятся две точки x_L &lt; x_R. Для максимума: если y_L &gt; y_R, отбрасывается [x_R, b]; иначе отбрасывается [a, x_L]. Поиск идёт, пока b − a &gt; 2ε. Ответ — середина оставшегося отрезка.</p>
+    <div class="step"><b>Дихотомия.</b> x_L,R = (a + b)/2 ∓ δ/2 (6). Отрезок уменьшается почти вдвое за шаг, но каждый шаг — это <b>два</b> новых вычисления f.</div>
+    <div class="step"><b>Золотое сечение.</b> x_L = b − τ(b − a), x_R = a + τ(b − a), τ = 0.618 (9). Одна точка переходит на следующий шаг, поэтому за шаг нужно <b>одно</b> вычисление, а отрезок уменьшается в Φ = 1.618 раза.</div>
+    <div class="step"><b>Фибоначчи.</b> Точки ставятся в отношениях F_{n−i−1}/F_{n−i+1} и F_{n−i}/F_{n−i+1} (11). Число вычислений n задаётся заранее, итоговый отрезок равен (b − a)/F_n. Получаемая точность ε_n = (b − a)/(2F_n) + δ/2.</div>
+  </div>
+
+  <div class="card" id="viz">
+    <h2>Методы по шагам</h2>
+    <div class="controls">
+      <div class="seg" id="mSeg">
+        <button data-m="dich" class="active">Дихотомия</button>
+        <button data-m="gold">Золотое сечение</button>
+        <button data-m="fib">Фибоначчи</button>
+      </div>
+      <label id="nBox" hidden>n = <b id="nVal">12</b> <input type="range" id="nFib" min="3" max="30" value="12"></label>
+    </div>
+    <div class="controls">
+      <button class="btn" id="stepBtn">Шаг →</button>
+      <button class="btn ghost" id="allBtn">До конца</button>
+      <button class="btn ghost" id="resetBtn">Сброс</button>
+    </div>
+    <div class="chart">
+      <div id="chart"></div>
+      <div class="legend"><span><i style="background:var(--accent)"></i>f(x)</span><span><i style="background:var(--accent3);opacity:.35"></i>текущий [a, b]</span><span><i style="background:var(--bad);opacity:.25"></i>отброшенная часть</span><span><i style="background:var(--accent2)"></i>x_L, x_R</span></div>
+    </div>
+    <div class="readout" id="out"></div>
+    <div class="table-wrap"><table id="tbl"></table></div>
+    <p class="note">Масштаб по x следует за интервалом, поэтому на поздних шагах видно, как он сужается. У Фибоначчи ползунком можно менять n: чем больше n, тем меньше итоговый отрезок.</p>
+  </div>
+
+  <div class="card" id="compare">
+    <h2>Сравнение методов (ε = 10⁻⁵)</h2>
+    <div class="table-wrap" style="max-height:none"><table id="cmpTbl"></table></div>
+    <h2 style="margin-top:18px">Сокращение интервала L₁/Lₙ при n вычислениях (таблица 1)</h2>
+    <div class="chart">
+      <div id="ratioChart"></div>
+      <div class="legend"><span><i style="background:var(--accent)"></i>дихотомия 2^(n/2)</span><span><i style="background:var(--accent2)"></i>золотое сечение Φ^(n−1)</span><span><i style="background:var(--accent3)"></i>Фибоначчи F_n</span></div>
+    </div>
+    <p class="note">При одинаковом числе вычислений Фибоначчи сжимает интервал сильнее всех, золотое сечение отстаёт лишь немного, дихотомия заметно хуже. Пассивному перебору для той же точности понадобилось бы около 250 000 вычислений.</p>
+  </div>
+
+</div>
+
+<script>
+const A0 = 1.5, B0 = 4, EPS = 1e-5, DELTA = 1e-6, TAU = (Math.sqrt(5) - 1) / 2;
+const f = x => x * x * Math.cos(2 * x + 1);
+
+let xs = 2.8;
+for (let i = 0; i < 50; i++) {
+  const g = Math.cos(2 * xs + 1) - xs * Math.sin(2 * xs + 1);
+  const dg = -3 * Math.sin(2 * xs + 1) - 2 * xs * Math.cos(2 * xs + 1);
+  xs -= g / dg;
+}
+const X_STAR = xs;
+
+function fibs(n) { const F = [1, 1]; while (F.length <= n) F.push(F[F.length - 1] + F[F.length - 2]); return F; }
+const fibEps = n => (B0 - A0) / (2 * fibs(n)[n]) + DELTA / 2;
+function fibNFor(eps) { let n = 3; while (fibEps(n) > eps) n++; return n; }
+
+// каждый шаг: {a, b, xL, xR, yL, yR, na, nb, evals}
+function dichotomy() {
+  let a = A0, b = B0, ev = 0; const st = [];
+  while (b - a > 2 * EPS) {
+    const m = (a + b) / 2, xL = m - DELTA / 2, xR = m + DELTA / 2, yL = f(xL), yR = f(xR);
+    ev += 2;
+    const s = { a, b, xL, xR, yL, yR };
+    if (yL > yR) b = xR; else a = xL;
+    st.push({ ...s, na: a, nb: b, evals: ev });
+  }
+  return st;
+}
+
+function golden() {
+  let a = A0, b = B0, xL = b - TAU * (b - a), xR = a + TAU * (b - a), yL = f(xL), yR = f(xR), ev = 2;
+  const st = [];
+  while (b - a > 2 * EPS) {
+    const s = { a, b, xL, xR, yL, yR };
+    if (yL > yR) { b = xR; xR = xL; yR = yL; xL = b - TAU * (b - a); yL = f(xL); }
+    else { a = xL; xL = xR; yL = yR; xR = a + TAU * (b - a); yR = f(xR); }
+    ev++;
+    st.push({ ...s, na: a, nb: b, evals: ev });
+  }
+  return st;
+}
+
+function fibonacci(n) {
+  const F = fibs(n);
+  let a = A0, b = B0, xL = a + F[n - 2] / F[n] * (b - a), xR = a + F[n - 1] / F[n] * (b - a), yL = f(xL), yR = f(xR), ev = 2;
+  const st = [];
+  for (let k = 1; k < n - 1; k++) {
+    const last = k === n - 2, s = { a, b, xL, xR, yL, yR };
+    if (yL > yR) { b = xR; xR = xL; yR = yL; xL = a + F[n - k - 2] / F[n - k] * (b - a) - (last ? DELTA : 0); yL = f(xL); }
+    else { a = xL; xL = xR; yL = yR; xR = a + F[n - k - 1] / F[n - k] * (b - a) + (last ? DELTA : 0); yR = f(xR); }
+    ev++;
+    st.push({ ...s, na: a, nb: b, evals: ev });
+  }
+  const s = { a, b, xL, xR, yL, yR };
+  if (yL > yR) b = xR; else a = xL;
+  st.push({ ...s, na: a, nb: b, evals: ev });
+  return st;
+}
+
+// ---------- SVG ----------
+function chart(el, { xMin, xMax, yMin, yMax, draw, H = 340, logY = false, xDigits = 2 }) {
+  const W = 760, L = 54, R = 14, T = 12, B = 30;
+  const tY = v => logY ? Math.log10(v) : v;
+  const px = x => L + (x - xMin) / (xMax - xMin) * (W - L - R);
+  const py = y => H - B - (tY(y) - tY(yMin)) / (tY(yMax) - tY(yMin)) * (H - T - B);
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" xmlns="http://www.w3.org/2000/svg" style="display:block">`;
+  for (let i = 0; i <= 5; i++) {
+    const v = logY ? 10 ** (tY(yMin) + (tY(yMax) - tY(yMin)) * i / 5) : yMin + (yMax - yMin) * i / 5, y = py(v);
+    s += `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" stroke="currentColor" stroke-opacity="0.1"/>`;
+    s += `<text x="${L - 6}" y="${y + 3}" font-size="10" fill="currentColor" opacity="0.6" text-anchor="end">${logY ? v.toExponential(0) : v.toFixed(2)}</text>`;
+  }
+  for (let i = 0; i <= 6; i++) {
+    const v = xMin + (xMax - xMin) * i / 6;
+    s += `<text x="${px(v)}" y="${H - B + 16}" font-size="10" fill="currentColor" opacity="0.6" text-anchor="middle">${v.toFixed(xDigits)}</text>`;
+  }
+  el.innerHTML = s + draw(px, py) + '</svg>';
+}
+
+const curve = (x0, x1, px, py) => {
+  let d = '';
+  for (let i = 0; i <= 400; i++) { const x = x0 + (x1 - x0) * i / 400; d += `${i ? 'L' : 'M'}${px(x).toFixed(1)} ${py(f(x)).toFixed(1)}`; }
+  return `<path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2.4"/>`;
+};
+
+// широкий график
+chart(document.getElementById('wideChart'), {
+  xMin: -4, xMax: 4, yMin: -6, yMax: 15, H: 280,
+  draw: (px, py) => {
+    let s = `<rect x="${px(A0)}" y="${py(15)}" width="${px(B0) - px(A0)}" height="${py(-6) - py(15)}" fill="var(--accent3)" fill-opacity="0.15"/>`;
+    s += `<line x1="${px(-4)}" x2="${px(4)}" y1="${py(0)}" y2="${py(0)}" stroke="currentColor" stroke-opacity="0.4"/>`;
+    s += curve(-4, 4, px, py);
+    [-3.771, -0.915, 0.191, X_STAR].forEach(x => { s += `<circle cx="${px(x)}" cy="${py(f(x))}" r="4.5" fill="var(--bad)"/>`; });
+    return s;
+  },
+});
+
+// ---------- пошаговый режим ----------
+let method = 'dich', steps = [], shown = 0;
+const run = () => method === 'dich' ? dichotomy() : method === 'gold' ? golden() : fibonacci(+document.getElementById('nFib').value);
+
+function render() {
+  const cur = shown ? steps[shown - 1] : null;
+  const a = cur ? cur.a : A0, b = cur ? cur.b : B0;
+  const pad = (b - a) * 0.15;
+  const xMin = Math.max(A0, a - pad), xMax = Math.min(B0, b + pad);
+  let yLo = Infinity, yHi = -Infinity;
+  for (let i = 0; i <= 100; i++) { const y = f(xMin + (xMax - xMin) * i / 100); yLo = Math.min(yLo, y); yHi = Math.max(yHi, y); }
+  const yr = (yHi - yLo) || 1e-9;
+  const digits = Math.max(2, Math.min(7, Math.ceil(-Math.log10(xMax - xMin)) + 2));
+  chart(document.getElementById('chart'), {
+    xMin, xMax, yMin: yLo - yr * 0.1, yMax: yHi + yr * 0.15, xDigits: digits,
+    draw: (px, py) => {
+      const top = py(yHi + yr * 0.15), bot = py(yLo - yr * 0.1);
+      let s = `<rect x="${px(a)}" y="${top}" width="${px(b) - px(a)}" height="${bot - top}" fill="var(--accent3)" fill-opacity="0.12"/>`;
+      if (cur) {
+        const [c0, c1] = cur.na > cur.a ? [cur.a, cur.na] : [cur.nb, cur.b];
+        s += `<rect x="${px(Math.max(c0, xMin))}" y="${top}" width="${Math.max(0, px(Math.min(c1, xMax)) - px(Math.max(c0, xMin)))}" height="${bot - top}" fill="var(--bad)" fill-opacity="0.15"/>`;
+      }
+      s += curve(xMin, xMax, px, py);
+      if (cur) {
+        for (const [x, y, lab] of [[cur.xL, cur.yL, 'x_L'], [cur.xR, cur.yR, 'x_R']]) {
+          s += `<line x1="${px(x)}" x2="${px(x)}" y1="${bot}" y2="${py(y)}" stroke="var(--accent2)" stroke-dasharray="3 3"/>`;
+          s += `<circle cx="${px(x)}" cy="${py(y)}" r="5" fill="var(--accent2)"/>`;
+          s += `<text x="${px(x) + (lab === 'x_L' ? -6 : 6)}" y="${py(y) - 8}" font-size="11" fill="currentColor" text-anchor="${lab === 'x_L' ? 'end' : 'start'}">${lab}</text>`;
+        }
+      }
+      return s;
+    },
+  });
+
+  const done = shown === steps.length;
+  const last = steps[steps.length - 1];
+  const na = cur ? cur.na : A0, nb = cur ? cur.nb : B0, xm = (na + nb) / 2;
+  const info = [
+    `<div>шаг ${shown} из ${steps.length}</div>`,
+    `<div>[a, b] = [${na.toFixed(7)}; ${nb.toFixed(7)}]</div>`,
+    `<div>b − a = ${(nb - na).toExponential(2)}</div>`,
+    `<div>вычислений f: ${cur ? cur.evals : 0}</div>`,
+  ];
+  if (cur) info.push(`<div>${cur.yL > cur.yR ? 'y_L > y_R → отбрасываем [x_R, b]' : 'y_L ≤ y_R → отбрасываем [a, x_L]'}</div>`);
+  if (done) info.push(`<div class="ok">x_m = ${xm.toFixed(7)}, y_m = ${f(xm).toFixed(7)}, |x_m − x*| = ${Math.abs(xm - X_STAR).toExponential(1)}</div>`);
+  if (method === 'fib') info.push(`<div>ε_n = (b − a)/(2F_n) + δ/2 = ${fibEps(+document.getElementById('nFib').value).toExponential(2)}</div>`);
+  document.getElementById('out').innerHTML = info.join('');
+
+  document.getElementById('tbl').innerHTML = `<tr><th>шаг</th><th>a</th><th>b</th><th>x_L</th><th>x_R</th><th>y_L</th><th>y_R</th><th>выч. f</th></tr>` +
+    steps.slice(0, shown).map((p, i) => `<tr><td>${i + 1}</td><td>${p.a.toFixed(6)}</td><td>${p.b.toFixed(6)}</td><td>${p.xL.toFixed(6)}</td><td>${p.xR.toFixed(6)}</td><td>${p.yL.toFixed(6)}</td><td>${p.yR.toFixed(6)}</td><td>${p.evals}</td></tr>`).join('');
+}
+
+function select(m) {
+  method = m;
+  document.getElementById('nBox').hidden = m !== 'fib';
+  steps = run(); shown = 0; render();
+}
+
+document.querySelectorAll('#mSeg button').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('#mSeg button').forEach(x => x.classList.remove('active'));
+  btn.classList.add('active');
+  select(btn.dataset.m);
+}));
+document.getElementById('nFib').addEventListener('input', e => { document.getElementById('nVal').textContent = e.target.value; steps = run(); shown = 0; render(); });
+document.getElementById('stepBtn').addEventListener('click', () => { if (shown < steps.length) { shown++; render(); } });
+document.getElementById('allBtn').addEventListener('click', () => { shown = steps.length; render(); });
+document.getElementById('resetBtn').addEventListener('click', () => { shown = 0; render(); });
+
+// ---------- сравнение ----------
+const nNeed = fibNFor(EPS);
+const res = [['Дихотомия', dichotomy()], ['Золотое сечение', golden()], [`Фибоначчи, n = ${nNeed}`, fibonacci(nNeed)]];
+document.getElementById('cmpTbl').innerHTML = `<tr><th>Метод</th><th>x_m</th><th>y_m</th><th>итераций</th><th>вычислений f</th><th>|x_m − x*|</th></tr>` +
+  res.map(([name, st]) => { const l = st[st.length - 1], xm = (l.na + l.nb) / 2; return `<tr><td>${name}</td><td>${xm.toFixed(8)}</td><td>${f(xm).toFixed(8)}</td><td>${st.length}</td><td>${l.evals}</td><td>${Math.abs(xm - X_STAR).toExponential(2)}</td></tr>`; }).join('') +
+  `<tr><td>Эталон (Ньютон)</td><td>${X_STAR.toFixed(8)}</td><td>${f(X_STAR).toFixed(8)}</td><td></td><td></td><td></td></tr>`;
+
+chart(document.getElementById('ratioChart'), {
+  xMin: 2, xMax: 25, yMin: 1, yMax: 2e5, logY: true, H: 280, xDigits: 0,
+  draw: (px, py) => {
+    const line = (fn, c) => { let d = ''; for (let n = 2; n <= 25; n++) d += `${n > 2 ? 'L' : 'M'}${px(n)} ${py(fn(n))}`; return `<path d="${d}" fill="none" stroke="${c}" stroke-width="2.2"/>`; };
+    return line(n => 2 ** Math.floor(n / 2), 'var(--accent)') + line(n => (1 / TAU) ** (n - 1), 'var(--accent2)') + line(n => fibs(n)[n], 'var(--accent3)');
+  },
+});
+
+select('dich');
+</script>
+</body>
+</html>

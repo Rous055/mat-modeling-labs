@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Лабораторная работа 3 — интерполяция</title>
+<style>
+  :root {
+    --bg: #f7f7fa; --card: #ffffff; --text: #1c1c22; --muted: #6b6b76;
+    --accent: #4f6df5; --accent2: #f5a04f; --accent3: #33ad7a; --accent4: #b0559c; --border: #e4e4ea;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #14141a; --card: #1e1e26; --text: #eaeaf0; --muted: #9a9aa6; --border: #2c2c36; }
+  }
+  :root[data-theme="dark"] { --bg: #14141a; --card: #1e1e26; --text: #eaeaf0; --muted: #9a9aa6; --border: #2c2c36; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.6; }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 32px 20px 60px; }
+  h1 { font-size: 1.6rem; margin-bottom: 4px; }
+  .sub { color: var(--muted); margin-top: 0; margin-bottom: 24px; font-size: 0.95rem; }
+  .toc { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+  .toc a { font-size: 0.85rem; text-decoration: none; color: var(--accent); background: rgba(79,109,245,0.1); padding: 6px 12px; border-radius: 20px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px; margin-bottom: 20px; }
+  h2 { font-size: 1.12rem; margin-top: 0; }
+  code, pre { background: rgba(127,127,127,0.12); border-radius: 6px; font-size: 0.85em; }
+  code { padding: 2px 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin-top: 10px; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  .controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+  .controls label { background: rgba(127,127,127,0.1); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; font-size: 0.88rem; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+  input[type="range"] { width: 220px; }
+  input[type="number"] { width: 80px; border: 1px solid var(--border); background: var(--card); color: var(--text); border-radius: 8px; padding: 5px 8px; font-size: 0.88rem; }
+  .chart-box { position: relative; height: 380px; margin-top: 6px; }
+  .readout { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; font-size: 0.88rem; }
+  .readout div { padding: 6px 12px; border-radius: 8px; background: rgba(127,127,127,0.08); }
+  .swatch { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Лабораторная работа 3 — интерполяция функции</h1>
+  <p class="sub">Ипатенков Г.А. · ИВТ-4 · вариант 6 — данные: sin(x) на [0,5]</p>
+
+  <div class="toc">
+    <a href="#methods">Методы</a>
+    <a href="#viz">Визуализация</a>
+  </div>
+
+  <div class="card" id="methods">
+    <h2>Четыре метода</h2>
+    <table>
+      <tr><th>Метод</th><th>Идея</th></tr>
+      <tr><td>Кусочно-линейная</td><td>прямая через два узла, окружающих x: y = aᵢx + bᵢ</td></tr>
+      <tr><td>Кусочно-параболическая</td><td>парабола через 3 ближайших к x узла, коэффициенты — из системы 3×3</td></tr>
+      <tr><td>Лагранж (схема Эйткена)</td><td>значения L последовательно уточняются по всем узлам; глобальный метод — использует их все сразу</td></tr>
+      <tr><td>Кубический сплайн</td><td>гладкая кусочно-кубическая функция, непрерывны 1-я и 2-я производные (естественные краевые условия)</td></tr>
+    </table>
+  </div>
+
+  <div class="card" id="viz">
+    <h2>Визуализация</h2>
+    <div class="controls">
+      <label><input type="checkbox" class="mtoggle" value="lin" checked> линейная</label>
+      <label><input type="checkbox" class="mtoggle" value="quad" checked> параболическая</label>
+      <label><input type="checkbox" class="mtoggle" value="lag" checked> Лагранж</label>
+      <label><input type="checkbox" class="mtoggle" value="spl" checked> сплайн</label>
+      <label>x = <input type="range" id="xSlider" min="0" max="5" step="0.05" value="2.5"></label>
+      <input type="number" id="xVal" min="0" max="5" step="0.05" value="2.5">
+    </div>
+    <div class="chart-box" id="chartBox"></div>
+    <div class="readout" id="readout"></div>
+  </div>
+
+</div>
+
+<script>
+const xs = [0,1,2,3,4,5];
+const ys = [0,0.84,0.91,0.14,-0.76,-0.96];
+const colors = { lin: '#4f6df5', quad: '#f5a04f', lag: '#b0559c', spl: '#33ad7a' };
+const names = { lin: 'линейная', quad: 'параболическая', lag: 'Лагранж', spl: 'сплайн' };
+
+function findInterval(x) {
+  let i = 0;
+  while (i < xs.length - 2 && x > xs[i+1]) i++;
+  return i;
+}
+
+function linearInterp(x) {
+  const i = findInterval(x);
+  const a = (ys[i+1]-ys[i])/(xs[i+1]-xs[i]);
+  const b = ys[i] - a*xs[i];
+  return a*x + b;
+}
+
+function solve3(A, b) {
+  const M = A.map((row,i) => [...row, b[i]]);
+  for (let col = 0; col < 3; col++) {
+    let piv = col;
+    for (let r = col+1; r < 3; r++) if (Math.abs(M[r][col]) > Math.abs(M[piv][col])) piv = r;
+    [M[col], M[piv]] = [M[piv], M[col]];
+    for (let r = 0; r < 3; r++) {
+      if (r === col) continue;
+      const f = M[r][col] / M[col][col];
+      for (let c = col; c <= 3; c++) M[r][c] -= f * M[col][c];
+    }
+  }
+  return [0,1,2].map(r => M[r][3] / M[r][r]);
+}
+
+function quadInterp(x) {
+  const idx = xs.map((xv,i) => [Math.abs(xv-x), i]).sort((a,b)=>a[0]-b[0]).slice(0,3).map(p=>p[1]).sort((a,b)=>a-b);
+  const A = idx.map(k => [xs[k]**2, xs[k], 1]);
+  const b = idx.map(k => ys[k]);
+  const [a2,a1,a0] = solve3(A,b);
+  return a2*x*x + a1*x + a0;
+}
+
+function lagrangeAitken(x) {
+  const n = xs.length;
+  let L = ys.slice();
+  for (let k = 1; k < n; k++) {
+    for (let i = 0; i < n-k; i++) {
+      const j = i+k;
+      L[i] = ((x-xs[i])*L[i+1] - (x-xs[j])*L[i]) / (xs[j]-xs[i]);
+    }
+  }
+  return L[0];
+}
+
+function buildSpline() {
+  const n = xs.length - 1;
+  const h = [];
+  for (let i = 0; i < n; i++) h.push(xs[i+1]-xs[i]);
+  const alpha = new Array(n+1).fill(0);
+  for (let i = 1; i < n; i++) alpha[i] = 3*(ys[i+1]-ys[i])/h[i] - 3*(ys[i]-ys[i-1])/h[i-1];
+  const l = new Array(n+1).fill(1), mu = new Array(n+1).fill(0), z = new Array(n+1).fill(0);
+  for (let i = 1; i < n; i++) {
+    l[i] = 2*(xs[i+1]-xs[i-1]) - h[i-1]*mu[i-1];
+    mu[i] = h[i]/l[i];
+    z[i] = (alpha[i] - h[i-1]*z[i-1])/l[i];
+  }
+  const c = new Array(n+1).fill(0), b = new Array(n).fill(0), d = new Array(n).fill(0);
+  for (let j = n-1; j >= 0; j--) {
+    c[j] = z[j] - mu[j]*c[j+1];
+    b[j] = (ys[j+1]-ys[j])/h[j] - h[j]*(c[j+1]+2*c[j])/3;
+    d[j] = (c[j+1]-c[j])/(3*h[j]);
+  }
+  return (x) => {
+    const i = findInterval(x);
+    const dx = x - xs[i];
+    return ys[i] + b[i]*dx + c[i]*dx*dx + d[i]*dx*dx*dx;
+  };
+}
+const splineFn = buildSpline();
+
+function valueOf(m, x) {
+  if (m==='lin') return linearInterp(x);
+  if (m==='quad') return quadInterp(x);
+  if (m==='lag') return lagrangeAitken(x);
+  return splineFn(x);
+}
+
+function render() {
+  const active = [...document.querySelectorAll('.mtoggle')].filter(c=>c.checked).map(c=>c.value);
+  const xT = parseFloat(document.getElementById('xVal').value);
+  const W = 780, H = 380, PAD = 46;
+  const xMin = xs[0], xMax = xs[xs.length-1];
+  const allY = ys.slice();
+  const grid = [];
+  for (let g = 0; g <= 400; g++) grid.push(xMin + (xMax-xMin)*g/400);
+  const curves = {};
+  active.forEach(m => { curves[m] = grid.map(v => valueOf(m, v)); });
+  active.forEach(m => allY.push(...curves[m]));
+  let yMin = Math.min(...allY), yMax = Math.max(...allY);
+  const yPad = (yMax-yMin)*0.1 || 1;
+  yMin -= yPad; yMax += yPad;
+
+  const px = x => PAD + (x-xMin)/(xMax-xMin)*(W-2*PAD);
+  const py = y => H-PAD - (y-yMin)/(yMax-yMin)*(H-2*PAD);
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">`;
+  svg += `<line x1="${PAD}" y1="${H-PAD}" x2="${W-PAD}" y2="${H-PAD}" stroke="currentColor" stroke-opacity="0.3"/>`;
+  svg += `<line x1="${PAD}" y1="${PAD}" x2="${PAD}" y2="${H-PAD}" stroke="currentColor" stroke-opacity="0.3"/>`;
+  for (let i = 0; i <= 5; i++) {
+    const v = xMin + (xMax-xMin)*i/5, x = px(v);
+    svg += `<text x="${x}" y="${H-PAD+18}" font-size="10" fill="currentColor" opacity="0.6" text-anchor="middle">${v.toFixed(1)}</text>`;
+  }
+  for (let i = 0; i <= 5; i++) {
+    const v = yMin + (yMax-yMin)*i/5, y = py(v);
+    svg += `<text x="${PAD-9}" y="${y+3}" font-size="10" fill="currentColor" opacity="0.6" text-anchor="end">${v.toFixed(1)}</text>`;
+  }
+
+  active.forEach(m => {
+    const path = grid.map((gx,i) => `${i===0?'M':'L'} ${px(gx)} ${py(curves[m][i])}`).join(' ');
+    svg += `<path d="${path}" fill="none" stroke="${colors[m]}" stroke-width="2.2"/>`;
+  });
+
+  xs.forEach((xv,i) => { svg += `<circle cx="${px(xv)}" cy="${py(ys[i])}" r="4.5" fill="currentColor"/>`; });
+
+  if (xT >= xMin && xT <= xMax) {
+    svg += `<line x1="${px(xT)}" y1="${PAD}" x2="${px(xT)}" y2="${H-PAD}" stroke="currentColor" stroke-opacity="0.35" stroke-dasharray="4 3"/>`;
+    active.forEach(m => {
+      const val = valueOf(m, xT);
+      svg += `<circle cx="${px(xT)}" cy="${py(val)}" r="5.5" fill="${colors[m]}" stroke="var(--card)" stroke-width="1.5"/>`;
+    });
+  }
+
+  const legendY = PAD - 22;
+  let lx = PAD;
+  active.forEach(m => {
+    svg += `<circle cx="${lx}" cy="${legendY}" r="5" fill="${colors[m]}"/>`;
+    svg += `<text x="${lx+10}" y="${legendY+4}" font-size="12" fill="currentColor">${names[m]}</text>`;
+    lx += names[m].length*7 + 34;
+  });
+  svg += `</svg>`;
+  document.getElementById('chartBox').innerHTML = svg;
+
+  const ro = document.getElementById('readout');
+  ro.innerHTML = active.map(m => {
+    const val = valueOf(m, xT);
+    return `<div><span class="swatch" style="background:${colors[m]}"></span>${names[m]}: y(${xT.toFixed(2)}) ≈ ${val.toFixed(4)}</div>`;
+  }).join('');
+}
+
+document.querySelectorAll('.mtoggle').forEach(el => el.addEventListener('change', render));
+const slider = document.getElementById('xSlider'), num = document.getElementById('xVal');
+slider.addEventListener('input', () => { num.value = slider.value; render(); });
+num.addEventListener('input', () => { slider.value = num.value; render(); });
+render();
+</script>
+</body>
+</html>

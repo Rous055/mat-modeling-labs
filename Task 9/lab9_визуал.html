@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Лабораторная работа 9 — задача Коши</title>
+<style>
+  :root {
+    --bg: #f7f7fa; --card: #ffffff; --text: #1c1c22; --muted: #6b6b76;
+    --accent: #4f6df5; --accent2: #f5a04f; --accent3: #33ad7a; --bad: #e0556a; --purple: #9b5de5; --border: #e4e4ea;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #14141a; --card: #1e1e26; --text: #eaeaf0; --muted: #9a9aa6; --border: #2c2c36; }
+  }
+  :root[data-theme="dark"] { --bg: #14141a; --card: #1e1e26; --text: #eaeaf0; --muted: #9a9aa6; --border: #2c2c36; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.6; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 32px 20px 60px; }
+  h1 { font-size: 1.6rem; margin-bottom: 4px; }
+  .sub { color: var(--muted); margin-top: 0; margin-bottom: 24px; font-size: 0.95rem; }
+  .toc { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+  .toc a { font-size: 0.85rem; text-decoration: none; color: var(--accent); background: rgba(79,109,245,0.1); padding: 6px 12px; border-radius: 20px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px; margin-bottom: 20px; }
+  h2 { font-size: 1.12rem; margin-top: 0; }
+  .formula { font-size: 1.0rem; background: rgba(127,127,127,0.08); border-radius: 10px; padding: 10px 16px; margin: 10px 0; text-align: center; overflow-x: auto; }
+  .step { border-left: 3px solid var(--border); padding: 4px 0 4px 14px; margin: 10px 0; }
+  .step b { color: var(--accent); }
+  .note { color: var(--muted); font-size: 0.85rem; }
+  .controls { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+  .controls label { font-size: 0.88rem; display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .controls input[type=range] { accent-color: var(--accent); }
+  .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .seg button { border: none; border-radius: 0; background: var(--card); color: var(--text); padding: 6px 12px; font-size: 0.88rem; cursor: pointer; }
+  .seg button.active { background: var(--accent); color: white; }
+  .chart { background: rgba(127,127,127,0.05); border-radius: 10px; padding: 6px; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.8rem; color: var(--muted); padding: 2px 6px 4px; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; }
+  .readout { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; font-size: 0.85rem; }
+  .readout div { padding: 6px 12px; border-radius: 8px; background: rgba(127,127,127,0.08); }
+  .table-wrap { overflow-x: auto; margin-top: 10px; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+  th, td { padding: 5px 10px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--muted); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Лабораторная работа 9 — численное решение задачи Коши</h1>
+  <p class="sub">Ипатенков Г.А. · ИВТ-4 · вариант 6 — y′ = 0.4y + 0.9x² + 1.7, y(0) = 1, x ∈ [0; 2], h = 0.2</p>
+
+  <div class="toc">
+    <a href="#exact">Аналитика</a>
+    <a href="#methods">Методы</a>
+    <a href="#viz">Сравнение</a>
+    <a href="#rkstep">Шаг РК-4</a>
+    <a href="#table">Таблица</a>
+  </div>
+
+  <div class="card" id="exact">
+    <h2>Аналитическое решение</h2>
+    <p>Параметры варианта: a = 0.4, b = 0.9, l = 1.7, n = 2. Уравнение y′ = (−1)ⁿ·a·y + b·x² + l линейное, с постоянными коэффициентами и неоднородностью-многочленом, поэтому решается в квадратурах: y = ȳ + y*.</p>
+    <div class="step"><b>Однородное уравнение.</b> Из y′ − 0.4y = 0 и y = Ce^{λx} получаем λ = 0.4, значит ȳ = Ce^{0.4x}.</div>
+    <div class="step"><b>Частное решение.</b> y* = Kx² + Lx + M. Подстановка даёт 2Kx + L − 0.4(Kx² + Lx + M) = 0.9x² + 1.7, откуда −0.4K = 0.9 → K = −2.25; 2K − 0.4L = 0 → L = −11.25; L − 0.4M = 1.7 → M = −32.375.</div>
+    <div class="step"><b>Начальное условие.</b> y(0) = C + M = 1, значит C = 33.375.</div>
+    <div class="formula"><b>y(x) = 33.375·e^{0.4x} − 2.25x² − 11.25x − 32.375</b></div>
+  </div>
+
+  <div class="card" id="methods">
+    <h2>Численные методы</h2>
+    <div class="step"><b>Эйлер</b> (5): y_{i+1} = y_i + h·f(x_i, y_i). Шаг идёт по касательной в начальной точке. Порядок O(h).</div>
+    <div class="step"><b>Хойн</b> (7): прогноз по Эйлеру, затем среднее двух наклонов, y_{i+1} = y_i + h/2·(K₁ + K₂). Порядок O(h²).</div>
+    <div class="step"><b>Рунге–Кутта IV</b> (8): четыре наклона — в начале шага, дважды в середине, в конце; y_{i+1} = y_i + h/6·(K₁ + 2K₂ + 2K₃ + K₄). Порядок O(h⁴).</div>
+  </div>
+
+  <div class="card" id="viz">
+    <h2>Сравнение методов</h2>
+    <div class="controls">
+      <span>Шаг h:</span>
+      <div class="seg" id="hSeg">
+        <button data-h="0.5">0.5</button>
+        <button data-h="0.4">0.4</button>
+        <button data-h="0.2" class="active">0.2</button>
+        <button data-h="0.1">0.1</button>
+        <button data-h="0.05">0.05</button>
+      </div>
+      <label><input type="checkbox" id="cbEu" checked> Эйлер</label>
+      <label><input type="checkbox" id="cbHe"> Хойн</label>
+      <label><input type="checkbox" id="cbRk" checked> РК-4</label>
+      <label><input type="checkbox" id="cbTan"> касательные Эйлера</label>
+    </div>
+    <div class="chart">
+      <div id="chart"></div>
+      <div class="legend"><span><i style="background:currentColor"></i>точное решение</span><span><i style="background:var(--bad)"></i>Эйлер</span><span><i style="background:var(--accent3)"></i>Хойн</span><span><i style="background:var(--accent)"></i>РК-4</span></div>
+    </div>
+    <div class="readout" id="out"></div>
+    <p class="note">Точное решение выпуклое и быстро растёт, поэтому касательная Эйлера всегда проходит ниже него, и ошибка накапливается. При h = 0.2 ломаная Эйлера к x = 2 отстаёт почти на 9%, а точки РК-4 совпадают с кривой до 5–6 знаков.</p>
+  </div>
+
+  <div class="card" id="rkstep">
+    <h2>Один шаг Рунге–Кутты IV порядка</h2>
+    <div class="controls">
+      <label>шаг i = <b id="iVal">0</b> <input type="range" id="iStep" min="0" max="9" value="0"></label>
+    </div>
+    <div class="chart">
+      <div id="rkChart"></div>
+      <div class="legend"><span><i style="background:var(--bad)"></i>K₁ — наклон в начале</span><span><i style="background:var(--accent2)"></i>K₂ — в середине по K₁</span><span><i style="background:var(--purple)"></i>K₃ — в середине по K₂</span><span><i style="background:var(--accent3)"></i>K₄ — в конце по K₃</span><span><i style="background:var(--accent)"></i>итоговый шаг</span></div>
+    </div>
+    <div class="readout" id="rkOut"></div>
+    <p class="note">Каждый наклон — это пробный шаг Эйлера. Итоговый шаг берёт их взвешенное среднее с весами 1/6, 2/6, 2/6, 1/6, поэтому он почти точно попадает на интегральную кривую.</p>
+  </div>
+
+  <div class="card" id="table">
+    <h2>Сравнительная таблица (h = 0.2)</h2>
+    <div class="table-wrap"><table id="tbl"></table></div>
+    <h2 style="margin-top:18px">Порядок точности: ошибка в точке x = 2</h2>
+    <div class="table-wrap"><table id="ordTbl"></table></div>
+    <p class="note">При уменьшении шага вдвое ошибка Эйлера падает в 2 раза, Хойна — примерно в 4 раза, РК-4 — примерно в 16 раз. Это соответствует порядкам 1, 2 и 4.</p>
+  </div>
+
+</div>
+
+<script>
+const lam = 0.4, B = 0.9, Lc = 1.7, X0 = 0, Y0 = 1, XE = 2;
+const K = -B / lam, L = 2 * K / lam, M = (L - Lc) / lam, C = Y0 - M;
+const f = (x, y) => lam * y + B * x * x + Lc;
+const yEx = x => C * Math.exp(lam * x) + K * x * x + L * x + M;
+
+function solve(method, h) {
+  const n = Math.round((XE - X0) / h), xs = [X0], ys = [Y0], ks = [];
+  for (let i = 0; i < n; i++) {
+    const x = xs[i], y = ys[i];
+    let yn;
+    if (method === 'eu') yn = y + h * f(x, y);
+    else if (method === 'he') { const k1 = f(x, y), k2 = f(x + h, y + h * k1); yn = y + h / 2 * (k1 + k2); }
+    else {
+      const k1 = f(x, y), k2 = f(x + h / 2, y + h / 2 * k1), k3 = f(x + h / 2, y + h / 2 * k2), k4 = f(x + h, y + h * k3);
+      ks.push([k1, k2, k3, k4]);
+      yn = y + h / 6 * (k1 + 2 * k2 + 2 * k3 + k4);
+    }
+    xs.push(X0 + (i + 1) * h); ys.push(yn);
+  }
+  return { xs, ys, ks };
+}
+
+function chart(el, { xMin, xMax, yMin, yMax, draw, H = 360 }) {
+  const W = 760, Lp = 50, R = 14, T = 12, Bp = 30;
+  const px = x => Lp + (x - xMin) / (xMax - xMin) * (W - Lp - R);
+  const py = y => H - Bp - (y - yMin) / (yMax - yMin) * (H - T - Bp);
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" xmlns="http://www.w3.org/2000/svg" style="display:block">`;
+  for (let i = 0; i <= 5; i++) {
+    const v = yMin + (yMax - yMin) * i / 5, y = py(v);
+    s += `<line x1="${Lp}" x2="${W - R}" y1="${y}" y2="${y}" stroke="currentColor" stroke-opacity="0.1"/>`;
+    s += `<text x="${Lp - 6}" y="${y + 3}" font-size="10" fill="currentColor" opacity="0.6" text-anchor="end">${v.toFixed(yMax - yMin < 1 ? 3 : 1)}</text>`;
+  }
+  for (let i = 0; i <= 8; i++) {
+    const v = xMin + (xMax - xMin) * i / 8;
+    s += `<text x="${px(v)}" y="${H - Bp + 16}" font-size="10" fill="currentColor" opacity="0.6" text-anchor="middle">${v.toFixed(xMax - xMin < 1 ? 3 : 2)}</text>`;
+  }
+  el.innerHTML = s + draw(px, py) + '</svg>';
+}
+
+const exactPath = (x0, x1, px, py) => {
+  let d = '';
+  for (let i = 0; i <= 200; i++) { const x = x0 + (x1 - x0) * i / 200; d += `${i ? 'L' : 'M'}${px(x).toFixed(1)} ${py(yEx(x)).toFixed(1)}`; }
+  return `<path d="${d}" fill="none" stroke="currentColor" stroke-width="2.6"/>`;
+};
+const poly = (xs, ys, px, py, c, dash = '') => `<path d="${xs.map((x, i) => `${i ? 'L' : 'M'}${px(x).toFixed(1)} ${py(ys[i]).toFixed(1)}`).join('')}" fill="none" stroke="${c}" stroke-width="1.8" ${dash ? `stroke-dasharray="${dash}"` : ''}/>`;
+const dots = (xs, ys, px, py, c, sq = false) => xs.map((x, i) => sq
+  ? `<rect x="${px(x) - 4}" y="${py(ys[i]) - 4}" width="8" height="8" fill="none" stroke="${c}" stroke-width="1.6"/>`
+  : `<circle cx="${px(x)}" cy="${py(ys[i])}" r="3.5" fill="${c}"/>`).join('');
+
+let h = 0.2;
+
+function render() {
+  const eu = solve('eu', h), he = solve('he', h), rk = solve('rk', h);
+  const show = id => document.getElementById(id).checked;
+  chart(document.getElementById('chart'), {
+    xMin: 0, xMax: 2, yMin: 0, yMax: 11,
+    draw: (px, py) => {
+      let s = exactPath(0, 2, px, py);
+      if (show('cbTan')) eu.xs.slice(0, -1).forEach((x, i) => {
+        const y = eu.ys[i], k = f(x, y), x2 = x + h * 1.6;
+        s += `<line x1="${px(x)}" y1="${py(y)}" x2="${px(x2)}" y2="${py(y + k * (x2 - x))}" stroke="var(--bad)" stroke-opacity="0.35" stroke-dasharray="3 3"/>`;
+      });
+      if (show('cbEu')) s += poly(eu.xs, eu.ys, px, py, 'var(--bad)') + dots(eu.xs, eu.ys, px, py, 'var(--bad)');
+      if (show('cbHe')) s += poly(he.xs, he.ys, px, py, 'var(--accent3)', '5 3') + dots(he.xs, he.ys, px, py, 'var(--accent3)');
+      if (show('cbRk')) s += dots(rk.xs, rk.ys, px, py, 'var(--accent)', true);
+      return s;
+    },
+  });
+  const yE = yEx(2), rel = y => (Math.abs(y - yE) / yE * 100);
+  document.getElementById('out').innerHTML = [
+    `<div>h = ${h}, узлов ${eu.xs.length}</div>`,
+    `<div>точное y(2) = ${yE.toFixed(6)}</div>`,
+    `<div style="color:var(--bad)">Эйлер: ${eu.ys.at(-1).toFixed(6)} (${rel(eu.ys.at(-1)).toFixed(3)}%)</div>`,
+    `<div style="color:var(--accent3)">Хойн: ${he.ys.at(-1).toFixed(6)} (${rel(he.ys.at(-1)).toExponential(1)}%)</div>`,
+    `<div style="color:var(--accent)">РК-4: ${rk.ys.at(-1).toFixed(6)} (${rel(rk.ys.at(-1)).toExponential(1)}%)</div>`,
+  ].join('');
+}
+
+function renderStep() {
+  const i = +document.getElementById('iStep').value, hh = 0.2;
+  document.getElementById('iVal').textContent = i;
+  const rk = solve('rk', hh), x = rk.xs[i], y = rk.ys[i], [k1, k2, k3, k4] = rk.ks[i];
+  const yn = rk.ys[i + 1];
+  const pts = [y, y + hh / 2 * k1, y + hh / 2 * k2, y + hh * k3, yn, yEx(x + hh)];
+  const lo = Math.min(...pts), hi = Math.max(...pts), pad = (hi - lo) * 0.2;
+  chart(document.getElementById('rkChart'), {
+    xMin: x - 0.02, xMax: x + hh + 0.02, yMin: lo - pad, yMax: hi + pad,
+    draw: (px, py) => {
+      const seg = (x1, y1, x2, y2, c, w = 2, dash = '') => `<line x1="${px(x1)}" y1="${py(y1)}" x2="${px(x2)}" y2="${py(y2)}" stroke="${c}" stroke-width="${w}" ${dash ? `stroke-dasharray="${dash}"` : ''}/>`;
+      const pt = (x1, y1, c) => `<circle cx="${px(x1)}" cy="${py(y1)}" r="4.5" fill="${c}"/>`;
+      const xm = x + hh / 2;
+      let s = exactPath(x - 0.02, x + hh + 0.02, px, py);
+      s += `<line x1="${px(xm)}" x2="${px(xm)}" y1="${py(lo - pad)}" y2="${py(hi + pad)}" stroke="currentColor" stroke-opacity="0.2" stroke-dasharray="2 4"/>`;
+      s += seg(x, y, xm, y + hh / 2 * k1, 'var(--bad)', 1.6, '4 3') + pt(xm, y + hh / 2 * k1, 'var(--bad)');
+      s += seg(x, y, xm, y + hh / 2 * k2, 'var(--accent2)', 1.6, '4 3') + pt(xm, y + hh / 2 * k2, 'var(--accent2)');
+      s += seg(x, y, x + hh, y + hh * k3, 'var(--purple)', 1.6, '4 3') + pt(x + hh, y + hh * k3, 'var(--purple)');
+      const t = 0.025;
+      s += seg(x + hh - t, y + hh * k3 - t * k4, x + hh + t * 0.6, y + hh * k3 + t * 0.6 * k4, 'var(--accent3)', 3);
+      s += seg(x, y, x + hh, yn, 'var(--accent)', 2.6) + pt(x + hh, yn, 'var(--accent)') + pt(x, y, 'currentColor');
+      return s;
+    },
+  });
+  document.getElementById('rkOut').innerHTML = [
+    `<div>x_i = ${x.toFixed(1)}, y_i = ${y.toFixed(6)}</div>`,
+    `<div style="color:var(--bad)">K₁ = ${k1.toFixed(5)}</div>`,
+    `<div style="color:var(--accent2)">K₂ = ${k2.toFixed(5)}</div>`,
+    `<div style="color:var(--purple)">K₃ = ${k3.toFixed(5)}</div>`,
+    `<div style="color:var(--accent3)">K₄ = ${k4.toFixed(5)}</div>`,
+    `<div style="color:var(--accent)">y_{i+1} = ${yn.toFixed(6)}, точное ${yEx(x + hh).toFixed(6)}</div>`,
+  ].join('');
+}
+
+// таблицы
+(() => {
+  const eu = solve('eu', 0.2), he = solve('he', 0.2), rk = solve('rk', 0.2);
+  document.getElementById('tbl').innerHTML = `<tr><th>x</th><th>точное</th><th>Эйлер</th><th>|ошибка|</th><th>Хойн</th><th>|ошибка|</th><th>РК-4</th><th>|ошибка|</th></tr>` +
+    eu.xs.map((x, i) => { const e = yEx(x); return `<tr><td>${x.toFixed(1)}</td><td>${e.toFixed(6)}</td><td>${eu.ys[i].toFixed(6)}</td><td>${Math.abs(eu.ys[i] - e).toExponential(2)}</td><td>${he.ys[i].toFixed(6)}</td><td>${Math.abs(he.ys[i] - e).toExponential(2)}</td><td>${rk.ys[i].toFixed(6)}</td><td>${Math.abs(rk.ys[i] - e).toExponential(2)}</td></tr>`; }).join('');
+  let prev = null;
+  const rows = [0.2, 0.1, 0.05, 0.025].map(hh => {
+    const errs = ['eu', 'he', 'rk'].map(m => Math.abs(solve(m, hh).ys.at(-1) - yEx(2)));
+    const r = errs.map((e, j) => prev ? (prev[j] / e).toFixed(1) : '—');
+    prev = errs;
+    return `<tr><td>${hh}</td><td>${errs[0].toExponential(3)}</td><td>${r[0]}</td><td>${errs[1].toExponential(3)}</td><td>${r[1]}</td><td>${errs[2].toExponential(3)}</td><td>${r[2]}</td></tr>`;
+  });
+  document.getElementById('ordTbl').innerHTML = `<tr><th>h</th><th>Эйлер</th><th>уменьш.</th><th>Хойн</th><th>уменьш.</th><th>РК-4</th><th>уменьш.</th></tr>` + rows.join('');
+})();
+
+document.querySelectorAll('#hSeg button').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('#hSeg button').forEach(x => x.classList.remove('active'));
+  btn.classList.add('active');
+  h = +btn.dataset.h;
+  render();
+}));
+['cbEu', 'cbHe', 'cbRk', 'cbTan'].forEach(id => document.getElementById(id).addEventListener('change', render));
+document.getElementById('iStep').addEventListener('input', renderStep);
+
+render();
+renderStep();
+</script>
+</body>
+</html>
